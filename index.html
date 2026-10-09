@@ -340,7 +340,7 @@ var CONFIG = {
     var intro;
     if (!d.open && done < total) intro = '<div class="note">The survey is now closed. Thank you for the ratings you gave.</div>';
     else if (done === total) intro = '<div class="note"><b>All done.</b> You have rated all ' + total + ' colleagues. Thank you, there is nothing more you need to do.</div>';
-    else intro = '<p class="lead">Rate each colleague on how they live the four values. Choose a name to begin. Each one takes about 10 minutes, and you can do them one at a time over several sittings.</p>';
+    else intro = '<p class="lead">Rate each colleague on how they live the four values. Choose a name to begin. Each one takes about five minutes, and you can do them one at a time over several sittings.</p>';
 
     app.innerHTML =
       '<div class="stack">' +
@@ -660,11 +660,11 @@ var CONFIG = {
     app.innerHTML =
       '<div class="stack">' +
         '<div class="section"><span class="demo-tag">Preview with sample data</span><h1>In Symmetry</h1>' +
-          '<p class="lead">A peer leadership 360 for the Symmetry leadership team. Each leader rates their seven colleagues against the four values, then sees their own results privately. The MD sees the team picture without names.</p>' +
-          '<p class="muted">Leader names, values and questions here are placeholders until the final set is confirmed.</p></div>' +
+          '<p class="lead">A peer leadership 360 for the Symmetry leadership team. Each leader rates their eight colleagues against the four values, then sees their own results privately. The MD sees the team picture without names.</p>' +
+          '<p class="muted">The names and questions are final. All scores shown are made-up sample data.</p></div>' +
         '<div class="views">' +
           '<button class="view" data-v="survey"><span class="eyebrow">Leader link 1</span><h3>The survey</h3><p>What a leader sees when they open their link: their colleagues, progress, and the rating flow.</p></button>' +
-          '<button class="view" data-v="leader"><span class="eyebrow">Leader link 2</span><h3>Personal results</h3><p>One leader\'s private dashboard, compared with the team average.</p></button>' +
+          '<button class="view" data-v="leader"><span class="eyebrow">Leader link 2</span><h3>Personal results</h3><p>What each leader sees privately, shown here for an example leader with sample scores.</p></button>' +
           '<button class="view" data-v="md"><span class="eyebrow">MD link</span><h3>Team overview</h3><p>Team scores, collective strengths and gaps, and completion. No names against scores.</p></button>' +
         '</div>' +
       '</div>';
@@ -685,12 +685,47 @@ var CONFIG = {
   }
 
   function demoApi() {
-    var NAMES = ['Thandi Mokoena', 'Pieter van Wyk', 'Ayesha Patel', 'Sipho Dlamini', 'Megan Fourie', 'Lerato Khumalo', 'David Nkosi', 'Nadia Abrahams'];
+    var NAMES = ["Kieyam Gamaldien", "Melanie Sassman", "Bernadette Kolbe", "Khensani Baloyi", "Kim Rassou", "Gontse Tsatsi", "Roland Gräbe", "Tiaan Herselman", "Suvira Bodha"];
     var VALUES = {
-      'Value One': ['{name} listens without interrupting.', '{name} makes it safe to disagree with them.', '{name} admits when they are wrong.', '{name} invites views from quieter voices.', '{name} responds calmly to bad news.', '{name} asks questions before giving answers.', '{name} gives credit to others.', '{name} keeps their commitments.', '{name} explains the reasons behind decisions.', '{name} treats people the same regardless of rank.'],
-      'Value Two': ['{name} challenges the way things are done.', '{name} tries new approaches, even if they might fail.', '{name} backs other people\'s ideas.', '{name} shares what they learn.', '{name} acts on feedback.', '{name} looks for better ways to serve clients.', '{name} makes decisions without unnecessary delay.', '{name} takes ownership when things go wrong.', '{name} encourages calculated risks.', '{name} learns from setbacks openly.'],
-      'Value Three': ['{name} knows the people in their team personally.', '{name} recognises good work.', '{name} checks in on how people are doing.', '{name} makes time for others.', '{name} gives honest, useful feedback.', '{name} develops the people around them.', '{name} includes others in decisions that affect them.', '{name} respects different working styles.', '{name} makes newcomers feel welcome.', '{name} shows appreciation sincerely.'],
-      'Value Four': ['{name} works across teams to solve problems.', '{name} shares information freely.', '{name} puts the organisation ahead of their own team.', '{name} supports decisions once they are made.', '{name} addresses conflict directly.', '{name} follows through on agreed actions.', '{name} holds others to account fairly.', '{name} is consistent in what they say and do.', '{name} raises concerns in the room, not after.', '{name} helps the leadership team work as one.']
+     "Comfortable in the Contrast": [
+      "{name} listens without interrupting.",
+      "{name} creates safe spaces where everyone feels comfortable expressing different viewpoints.",
+      "{name} approaches conversations with an open mind.",
+      "{name} speaks up and shares their perspective, even when it's difficult.",
+      "{name} remains respectful during disagreements.",
+      "{name} is comfortable with being wrong.",
+      "{name} feels safe to ask questions."
+     ],
+     "For Those Who Dare": [
+      "{name} challenges the status quo by questioning if there's a better way.",
+      "{name} tries new approaches, even if they might fail.",
+      "{name} speaks up courageously with their ideas.",
+      "{name} creates psychological safety for others to share innovative ideas.",
+      "{name} listens to ideas from people at all levels.",
+      "{name} celebrates learning from failures.",
+      "{name} continuously seeks to develop new skills.",
+      "{name} encourages others in their innovative efforts."
+     ],
+     "We Are Transformers": [
+      "{name} continuously learns about new developments in their field.",
+      "{name} integrates new technologies into their work.",
+      "{name} shares their knowledge and learnings with others.",
+      "{name} seeks insights from client interactions.",
+      "{name} constantly asks \"is this the best way?\" and looks for improvements.",
+      "{name} drives opportunities through to completion.",
+      "{name} helps others develop and grow through mentorship.",
+      "{name} stays grounded in human connection as technology advances."
+     ],
+     "We See You": [
+      "{name} shows genuine interest in their colleagues.",
+      "{name} celebrates the wins of colleagues, both big and small.",
+      "{name} expresses sincere appreciation for other colleagues.",
+      "{name} makes an effort to understand people's roles, aspirations, and challenges.",
+      "{name} makes sure everyone has a chance to be heard.",
+      "{name} respects diverse personalities and working styles of others.",
+      "{name} checks in with colleagues about personal matters.",
+      "{name} creates opportunities for informal social connections with the team."
+     ]
     };
     var SCALE = ['Strongly disagree', 'Disagree', 'Neutral', 'Agree', 'Strongly agree'];
     var questions = [], values = [];
@@ -698,7 +733,7 @@ var CONFIG = {
       values.push({ name: v, questions: VALUES[v].map(function (t, qi) { var q = { id: 'V' + (vi + 1) + 'Q' + (qi + 1), value: v, text: t }; questions.push(q); return { id: q.id, text: t }; }) });
     });
     var seed = 7; function rnd() { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }
-    var leanL = [0.5, 0.1, 0.35, -0.25, 0.2, 0.6, -0.1, 0.3];
+    var leanL = [0.5, 0.1, 0.35, -0.25, 0.2, 0.6, -0.1, 0.3, 0.15];
     var leanQ = questions.map(function (q, i) { return [0.4, -0.3, -0.6, 0.1, 0.2, 0.5, -0.4, 0.3, 0.0, -0.2][i % 10] + [0.2, -0.1, 0.25, -0.15][Math.floor(i / 10)]; });
     var responses = [];
     NAMES.forEach(function (_, r) { NAMES.forEach(function (_, t) {
@@ -730,10 +765,10 @@ var CONFIG = {
             var all = responses.filter(function (x) { return x.qid === q.id; }).map(function (x) { return x.score; });
             return { id: q.id, value: q.value, text: q.text, avg: teamQ[q.id], dist: dist(all), spread: r2(sd(all)) };
           });
-          var comp = NAMES.map(function (n, r) { var c = {}; responses.forEach(function (x) { if (x.rater === r) c[x.ratee] = 1; }); return { name: n, done: Object.keys(c).length, total: 7 }; });
+          var comp = NAMES.map(function (n, r) { var c = {}; responses.forEach(function (x) { if (x.rater === r) c[x.ratee] = 1; }); return { name: n, done: Object.keys(c).length, total: NAMES.length - 1 }; });
           return wait({ type: 'md', title: 'In Symmetry', subtitle: 'Leadership Values 360', scale: SCALE, open: true, released: true, minRaters: 3,
-            completion: comp, totals: { done: comp.reduce(function (a, c) { return a + c.done; }, 0), expected: 56 },
-            leadersIncluded: 8, leadersTotal: 8, overall: r2(mean(qs.map(function (q) { return q.avg; }))), questions: qs,
+            completion: comp, totals: { done: comp.reduce(function (a, c) { return a + c.done; }, 0), expected: NAMES.length * (NAMES.length - 1) },
+            leadersIncluded: NAMES.length, leadersTotal: NAMES.length, overall: r2(mean(qs.map(function (q) { return q.avg; }))), questions: qs,
             values: byValue(qs, function (vq, vn) {
               var b = { high: 0, mid: 0, low: 0 };
               NAMES.forEach(function (_, t) { var s = mean(vq.map(function (q) { return mean(scoresFor(t, q.id)); })); if (s >= 4) b.high++; else if (s < 3) b.low++; else b.mid++; });
@@ -742,7 +777,7 @@ var CONFIG = {
         }
         var t = 1;
         var qs2 = questions.map(function (q) { var l = scoresFor(t, q.id); return { id: q.id, value: q.value, text: q.text, avg: r2(mean(l)), dist: dist(l), team: teamQ[q.id] }; });
-        return wait({ type: 'leader', title: 'In Symmetry', subtitle: 'Leadership Values 360', name: NAMES[t], scale: SCALE, released: true, raters: 7, minRaters: 3,
+        return wait({ type: 'leader', title: 'In Symmetry', subtitle: 'Leadership Values 360', name: 'Example leader', scale: SCALE, released: true, raters: NAMES.length - 1, minRaters: 3,
           overall: r2(mean(qs2.map(function (q) { return q.avg; }))), teamOverall: r2(mean(qs2.map(function (q) { return q.team; }))), questions: qs2,
           values: byValue(qs2, function (vq) { return { score: r2(mean(vq.map(function (q) { return q.avg; }))), team: r2(mean(vq.map(function (q) { return q.team; }))) }; }) });
       }
