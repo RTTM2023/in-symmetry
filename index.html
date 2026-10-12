@@ -204,6 +204,8 @@ main{padding-block:36px 64px}
 .view:hover{border-color:var(--charcoal)}
 .view h3{font-size:18px}
 .view p{font-size:14px;color:var(--muted)}
+.previewbar{background:var(--mist);border-bottom:1px solid var(--line);font-size:13px;color:var(--charcoal)}
+.previewbar .wrap{padding-block:8px}
 .backlink{background:none;border:0;padding:0;color:var(--muted);cursor:pointer;font-size:14px;text-decoration:underline;text-underline-offset:3px}
 
 @media (max-width:760px){
@@ -245,6 +247,7 @@ main{padding-block:36px 64px}
     <div class="who" id="who"></div>
   </div>
 </header>
+<div class="previewbar" id="previewbar" hidden><div class="wrap">Preview with sample data. Nothing you enter here is saved or shared.</div></div>
 <div id="ratebar-slot"></div>
 <main><div class="wrap" id="demobar"></div><div class="wrap" id="app"><div class="spinner">Loading</div></div></main>
 <footer class="foot">
@@ -270,7 +273,9 @@ var CONFIG = {
   var who = document.getElementById('who');
   var ratebarSlot = document.getElementById('ratebar-slot');
   var tip = document.getElementById('tip');
-  var DEMO = !CONFIG.API_URL;
+  var params = new URLSearchParams(location.search);
+  // Preview mode: no Sheet configured, or ?demo on the live address. Sample data only.
+  var DEMO = !CONFIG.API_URL || params.has('demo');
   var api = DEMO ? demoApi() : liveApi(CONFIG.API_URL);
 
   /* ---------- small helpers ---------- */
@@ -303,8 +308,7 @@ var CONFIG = {
   });
 
   /* ---------- routing ---------- */
-  var params = new URLSearchParams(location.search);
-  if (DEMO) demoHub();
+  if (DEMO) openDemo(params.get('demo'));
   else if (params.get('s')) loadSurvey(params.get('s'));
   else if (params.get('r')) loadReport(params.get('r'));
   else { app.innerHTML = '<div class="stack"><h1>Welcome</h1><p class="lead">Please open the personal link you received by email. Each leader has their own link for the survey and another for their results.</p></div>'; }
@@ -340,13 +344,14 @@ var CONFIG = {
     var intro;
     if (!d.open && done < total) intro = '<div class="note">The survey is now closed. Thank you for the ratings you gave.</div>';
     else if (done === total) intro = '<div class="note"><b>All done.</b> You have rated all ' + total + ' colleagues. Thank you, there is nothing more you need to do.</div>';
+    else if (d.preview) intro = '<p class="lead">This is a practice run with the real questions. Choose any colleague and rate them as you would in the live survey. In the live survey, each leader sees their eight colleagues.</p>';
     else intro = '<p class="lead">Rate each colleague on how they live the four values. Choose a name to begin. Each one takes about five minutes, and you can do them one at a time over several sittings.</p>';
 
     app.innerHTML =
       '<div class="stack">' +
         '<div class="section">' +
           '<span class="eyebrow">' + esc(d.subtitle || 'Leadership Values 360') + '</span>' +
-          '<h1>Hello ' + esc(firstName(d.name)) + '</h1>' +
+          '<h1>' + (d.preview ? 'Try the survey' : 'Hello ' + esc(firstName(d.name))) + '</h1>' +
           (flash ? '<div class="note">' + esc(flash) + '</div>' : '') +
           intro +
         '</div>' +
@@ -366,7 +371,13 @@ var CONFIG = {
             '<li>Once you submit for a colleague, those ratings are final.</li>' +
           '</ul>' +
         '</div>' +
+        (d.preview ? '<div class="section"><h2>See the results views</h2>' +
+          '<p class="muted" style="max-width:66ch">These show sample scores, not the ratings you gave here.</p>' +
+          '<div class="row"><button class="btn" data-go="results">Example personal results</button><button class="btn ghost" data-go="md">MD team view</button></div></div>' : '') +
       '</div>';
+    app.querySelectorAll('[data-go]').forEach(function (b) {
+      b.addEventListener('click', function () { openDemo(b.getAttribute('data-go')); });
+    });
     app.querySelectorAll('.person:not([disabled])').forEach(function (b) {
       b.addEventListener('click', function () { startRating(b.getAttribute('data-id')); });
     });
@@ -664,19 +675,25 @@ var CONFIG = {
           '<p class="muted">The names and questions are final. All scores shown are made-up sample data.</p></div>' +
         '<div class="views">' +
           '<button class="view" data-v="survey"><span class="eyebrow">Leader link 1</span><h3>The survey</h3><p>What a leader sees when they open their link: their colleagues, progress, and the rating flow.</p></button>' +
-          '<button class="view" data-v="leader"><span class="eyebrow">Leader link 2</span><h3>Personal results</h3><p>What each leader sees privately, shown here for an example leader with sample scores.</p></button>' +
+          '<button class="view" data-v="results"><span class="eyebrow">Leader link 2</span><h3>Personal results</h3><p>What each leader sees privately, shown here for an example leader with sample scores.</p></button>' +
           '<button class="view" data-v="md"><span class="eyebrow">MD link</span><h3>Team overview</h3><p>Team scores, collective strengths and gaps, and completion. No names against scores.</p></button>' +
         '</div>' +
       '</div>';
     app.querySelectorAll('.view').forEach(function (b) {
       b.addEventListener('click', function () {
-        var v = b.getAttribute('data-v');
-        if (v === 'survey') loadSurvey('demo-survey');
-        else loadReport(v === 'md' ? 'demo-md' : 'demo-leader');
-        setTimeout(addBack, 0);
+        openDemo(b.getAttribute('data-v'));
       });
     });
     top();
+  }
+  // Direct preview links: ?demo=survey, ?demo=results, ?demo=md. Plain ?demo shows the menu.
+  function openDemo(view) {
+    document.getElementById('previewbar').hidden = false;
+    if (view === 'survey') loadSurvey('demo-survey');
+    else if (view === 'results') loadReport('demo-leader');
+    else if (view === 'md') loadReport('demo-md');
+    else return demoHub();
+    addBack();
   }
   function addBack() {
     var bar = document.getElementById('demobar');
@@ -751,14 +768,14 @@ var CONFIG = {
     var teamQ = {}; questions.forEach(function (q) { teamQ[q.id] = r2(mean(NAMES.map(function (_, t) { return mean(scoresFor(t, q.id)); }))); });
     function byValue(qs, fn) { return values.map(function (v) { var vq = qs.filter(function (q) { return q.value === v.name; }); var o = fn(vq, v.name); o.name = v.name; return o; }); }
     var wait = function (x) { return new Promise(function (res) { setTimeout(function () { res(JSON.parse(JSON.stringify(x))); }, 250); }); };
-    var done = {}; responses.forEach(function (x) { if (x.rater === 0) done[x.ratee] = true; });
+    var pdone = {}; // colleagues rated in this preview session
 
     return {
       survey: function () {
-        return wait({ type: 'survey', title: 'In Symmetry', subtitle: 'Leadership Values 360', name: NAMES[0], open: true, scale: SCALE, values: values,
-          colleagues: NAMES.slice(1).map(function (n, i) { return { id: 'L' + (i + 2), name: n, done: !!done[i + 1] }; }) });
+        return wait({ type: 'survey', title: 'In Symmetry', subtitle: 'Leadership Values 360', name: 'Preview', open: true, scale: SCALE, values: values,
+          preview: true, colleagues: NAMES.map(function (n, i) { return { id: 'L' + (i + 1), name: n, done: !!pdone['L' + (i + 1)] }; }) });
       },
-      submit: function (b) { done[+b.ratee.slice(1) - 1] = true; return wait({ ok: true }); },
+      submit: function (b) { pdone[b.ratee] = true; return wait({ ok: true }); },
       report: function (code) {
         if (code === 'demo-md') {
           var qs = questions.map(function (q) {
