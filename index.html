@@ -195,6 +195,16 @@ main{padding-block:36px 64px}
 .bands .bh{background:var(--s5)}.bands .bm{background:var(--s3)}.bands .bl{background:var(--s1)}
 .bandtxt{font-size:12px;color:var(--muted)}
 
+.tablewrap{overflow-x:auto;max-width:100%}
+.atable{width:100%;border-collapse:collapse;font-size:14px;min-width:640px}
+.atable th{font-weight:500;font-size:12px;color:var(--muted);text-align:left;padding:8px 10px 8px 0;border-bottom:2px solid var(--charcoal);vertical-align:bottom}
+.atable td{padding:10px 10px 10px 0;border-bottom:1px solid var(--line)}
+.atable .num{text-align:right}
+.atable .teamrow td{background:var(--mist);font-weight:600}
+.atable td:first-child,.atable th:first-child{padding-left:8px}
+.flag{display:inline-block;font-size:11px;padding:1px 6px;border:1px solid var(--warn);color:var(--warn);border-radius:var(--r);margin-left:4px;white-space:nowrap}
+.chip{font-size:13px;padding:4px 10px;border:1px solid var(--line);border-radius:var(--r);background:var(--mist)}
+.btn.sm{padding:6px 12px;font-size:13px}
 .tip{position:fixed;z-index:50;pointer-events:none;background:var(--ink);color:var(--paper);font-size:12px;padding:6px 9px;border-radius:var(--r);max-width:240px;line-height:1.4}
 
 /* Demo hub */
@@ -221,6 +231,8 @@ main{padding-block:36px 64px}
   .brand .name{font-size:16px}
   .brand img{height:28px}
   .top .who{display:none}
+  .pips{flex-wrap:nowrap;gap:3px}
+  .pip{width:10px}
   .ratebar .wrap{padding-block:8px;gap:6px 12px}
   .ratebar .eyebrow{display:none}
   .steps{order:3;width:100%;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
@@ -501,6 +513,7 @@ var CONFIG = {
       if (d.error) return errorView(d.error);
       setTitle(d.title);
       if (d.type === 'md') { who.textContent = 'Team overview'; mdView(d); }
+      else if (d.type === 'admin') { who.textContent = 'Admin'; adminView(d, code); }
       else { who.textContent = d.name; leaderView(d); }
     }).catch(function () { errorView('We could not load these results. Check your connection and refresh the page.'); });
   }
@@ -541,6 +554,7 @@ var CONFIG = {
   function leaderView(d) {
     ratebarSlot.innerHTML = '';
     if (!d.released) return waiting('Hello ' + firstName(d.name), 'Your results will appear here once the survey has closed and results are released. Keep this link, it is private to you.');
+    if (d.insufficient && d.admin) { waiting(d.name, 'No colleagues have rated ' + esc(firstName(d.name)) + ' yet.'); return adminBack(); }
     if (d.insufficient) return waiting('Hello ' + firstName(d.name), 'Fewer than ' + d.minRaters + ' colleagues rated you, so to protect their anonymity your results are not shown. Run to the Monster can talk you through what this means.');
 
     var tiles = d.values.map(function (v) {
@@ -559,7 +573,7 @@ var CONFIG = {
     var groups = groupByValue(d.questions).map(function (g) {
       var vs = d.values.filter(function (v) { return v.name === g.name; })[0];
       return '<div class="vgroup"><h3><span>' + esc(g.name) + '</span><span class="num">' + fmt(vs && vs.score) + '</span></h3>' +
-        '<div class="qhead"><span>Behaviour</span><span>How colleagues rated you</span><span>Avg</span></div>' +
+        '<div class="qhead"><span>Behaviour</span><span>' + (d.admin ? 'How colleagues rated them' : 'How colleagues rated you') + '</span><span>Avg</span></div>' +
         g.qs.map(function (q) {
           return '<div class="qrow"><span class="qt">' + esc(bare(q.text)) + '</span>' + distBar(q.dist, d.scale) +
             '<span class="qs num"><b>' + fmt(q.avg) + '</b><span>team ' + fmt(q.team) + '</span></span></div>';
@@ -568,23 +582,81 @@ var CONFIG = {
 
     app.innerHTML =
       '<div class="stack">' +
-        '<div class="section"><span class="eyebrow">Your results</span><h1>' + esc(d.name) + '</h1>' +
+        '<div class="section"><span class="eyebrow">' + (d.admin ? 'Admin view of' : 'Your results') + '</span><h1>' + esc(d.name) + '</h1>' +
+          (d.admin && d.raters < d.minRaters ? '<div class="note">Only ' + d.raters + ' colleague' + (d.raters === 1 ? ' has' : 's have') + ' rated ' + esc(firstName(d.name)) + ' so far. ' + esc(firstName(d.name)) + ' will not see these results unless at least ' + d.minRaters + ' do.</div>' : '') +
           '<p class="muted">Based on ratings from ' + d.raters + ' colleagues on the leadership team. Scores run from 1 (strongly disagree) to 5 (strongly agree).</p></div>' +
         '<div class="hero">' +
           '<div><div class="eyebrow">Overall</div><div class="big num">' + fmt(d.overall) + '<small>/ 5</small></div><div class="muted num" style="font-size:14px">Team average ' + fmt(d.teamOverall) + '</div></div>' +
           '<div class="tiles">' + tiles + '</div>' +
         '</div>' +
-        '<div class="section"><div class="section-head"><i class="mark"></i><h2>You and the team, by value</h2></div>' +
-          '<div class="legend"><span><i class="sw" style="background:var(--orange)"></i>Your score</span><span><i class="sw tick"></i>Team average</span></div>' +
+        '<div class="section"><div class="section-head"><i class="mark"></i><h2>' + (d.admin ? esc(firstName(d.name)) + ' and the team' : 'You and the team') + ', by value</h2></div>' +
+          '<div class="legend"><span><i class="sw" style="background:var(--orange)"></i>' + (d.admin ? esc(firstName(d.name)) + '\'s score' : 'Your score') + '</span><span><i class="sw tick"></i>Team average</span></div>' +
           '<div class="vbars">' + bars + axis() + '</div></div>' +
         '<div class="ranked">' +
-          '<div class="section"><div class="section-head"><i class="mark"></i><h2>Your strongest behaviours</h2></div>' + rlist(ranked(d.questions, 'avg', 1, 5), function (q) { return fmt(q.avg); }) + '</div>' +
+          '<div class="section"><div class="section-head"><i class="mark"></i><h2>' + (d.admin ? 'Strongest behaviours' : 'Your strongest behaviours') + '</h2></div>' + rlist(ranked(d.questions, 'avg', 1, 5), function (q) { return fmt(q.avg); }) + '</div>' +
           '<div class="section"><div class="section-head"><i class="mark"></i><h2>Where to grow</h2></div>' + rlist(ranked(d.questions, 'avg', -1, 5), function (q) { return fmt(q.avg); }) + '</div>' +
         '</div>' +
         '<div class="section"><div class="section-head"><i class="mark"></i><h2>Every behaviour</h2></div>' +
-          '<p class="muted" style="max-width:66ch">Each bar shows how your colleagues spread their ratings. A low average where everyone agrees is a clear signal. A low average with mixed ratings means people experience you differently.</p>' +
+          '<p class="muted" style="max-width:66ch">' + (d.admin ? 'Each bar shows how colleagues spread their ratings. A low average where everyone agrees is a clear signal. A low average with mixed ratings means people experience this leader differently.' : 'Each bar shows how your colleagues spread their ratings. A low average where everyone agrees is a clear signal. A low average with mixed ratings means people experience you differently.') + '</p>' +
           scaleLegend(d.scale) + groups + '</div>' +
       '</div>';
+    top();
+  }
+
+  /* ---------- admin dashboard (Run to the Monster only) ---------- */
+  var ADMIN = null;
+  function adminBack() {
+    if (!ADMIN) return;
+    var bar = document.createElement('div');
+    bar.style.cssText = 'margin-bottom:20px';
+    bar.innerHTML = '<button class="backlink" id="toadmin">Back to admin view</button>';
+    app.prepend(bar);
+    document.getElementById('toadmin').addEventListener('click', function () { who.textContent = 'Admin'; adminView(ADMIN.d, ADMIN.code); });
+  }
+  function adminView(d, code) {
+    ADMIN = { d: d, code: code };
+    ratebarSlot.innerHTML = '';
+    var vnames = d.teamValues.map(function (v) { return v.name; });
+    function cell(x) { return '<td class="num">' + fmt(x) + '</td>'; }
+    var head = '<tr><th>Leader</th><th class="num" title="Colleagues who have rated this leader">Rated by</th><th class="num">Overall</th>' +
+      vnames.map(function (n) { return '<th class="num">' + esc(n) + '</th>'; }).join('') + '<th></th></tr>';
+    var teamRow = '<tr class="teamrow"><td>Team average</td><td></td>' + cell(d.teamOverall) +
+      d.teamValues.map(function (v) { return cell(v.score); }).join('') + '<td></td></tr>';
+    var rows = d.leaders.map(function (l) {
+      var low = l.raters < d.minRaters;
+      return '<tr><td><b>' + esc(l.name) + '</b></td>' +
+        '<td class="num">' + l.raters + ' / ' + d.expected + (low ? ' <span class="flag" title="Below the minimum: this leader will not see results">below ' + d.minRaters + '</span>' : '') + '</td>' +
+        cell(l.overall) + l.values.map(function (v) { return cell(v.score); }).join('') +
+        '<td><button class="btn ghost sm" data-leader="' + esc(l.id) + '"' + (l.raters ? '' : ' disabled') + '>Open</button></td></tr>';
+    }).join('');
+    var comp = d.leaders.map(function (l) {
+      var p = ''; for (var i = 0; i < d.expected; i++) p += '<i class="pip' + (i < l.given ? ' on' : '') + '"></i>';
+      return '<tr><td>' + esc(l.name) + '</td><td><div class="pips" aria-hidden="true">' + p + '</div></td><td class="num">' + l.given + ' / ' + d.expected + '</td></tr>';
+    }).join('');
+    var pctDone = d.totals.expected ? Math.round(d.totals.done / d.totals.expected * 100) : 0;
+    app.innerHTML =
+      '<div class="stack">' +
+        '<div class="section"><span class="eyebrow">Admin view</span><h1>All results</h1>' +
+          '<p class="muted" style="max-width:66ch">Only you can see this page. It shows every leader by name and works before results are released. Keep this link private.</p>' +
+          '<div class="row"><span class="chip">Survey ' + (d.open ? 'open' : 'closed') + '</span><span class="chip">Results ' + (d.released ? 'released' : 'hidden from leaders and MD') + '</span><span class="chip num">' + d.totals.done + ' of ' + d.totals.expected + ' ratings in (' + pctDone + '%)</span></div></div>' +
+        '<div class="section"><div class="section-head"><i class="mark"></i><h2>Scores by leader</h2></div>' +
+          '<p class="muted" style="max-width:66ch">Average rating from colleagues, 1 to 5. Open a leader to see their full dashboard exactly as they will see it.</p>' +
+          '<div class="tablewrap"><table class="atable">' + head + teamRow + rows + '</table></div></div>' +
+        '<div class="section"><div class="section-head"><i class="mark"></i><h2>Completion</h2></div>' +
+          '<p class="muted">How many colleagues each leader has rated so far.</p>' +
+          '<div class="tablewrap"><table class="ctable">' + comp + '</table></div></div>' +
+      '</div>';
+    app.querySelectorAll('[data-leader]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        loading();
+        api.report(code, b.getAttribute('data-leader')).then(function (r) {
+          if (r.error) return errorView(r.error);
+          who.textContent = 'Admin';
+          leaderView(r);
+          if (!r.insufficient) adminBack();
+        }).catch(function () { errorView('We could not load that leader. Check your connection and try again.'); });
+      });
+    });
     top();
   }
 
@@ -657,7 +729,7 @@ var CONFIG = {
   function liveApi(url) {
     return {
       survey: function (code) { return fetch(url + '?action=survey&code=' + encodeURIComponent(code)).then(function (r) { return r.json(); }); },
-      report: function (code) { return fetch(url + '?action=report&code=' + encodeURIComponent(code)).then(function (r) { return r.json(); }); },
+      report: function (code, leader) { return fetch(url + '?action=report&code=' + encodeURIComponent(code) + (leader ? '&leader=' + encodeURIComponent(leader) : '')).then(function (r) { return r.json(); }); },
       submit: function (body) {
         return fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) }).then(function (r) { return r.json(); });
       }
@@ -692,6 +764,7 @@ var CONFIG = {
     if (view === 'survey') loadSurvey('demo-survey');
     else if (view === 'results') loadReport('demo-leader');
     else if (view === 'md') loadReport('demo-md');
+    else if (view === 'admin') loadReport('demo-admin');
     else return demoHub();
     addBack();
   }
@@ -776,7 +849,21 @@ var CONFIG = {
           preview: true, colleagues: NAMES.map(function (n, i) { return { id: 'L' + (i + 1), name: n, done: !!pdone['L' + (i + 1)] }; }) });
       },
       submit: function (b) { pdone[b.ratee] = true; return wait({ ok: true }); },
-      report: function (code) {
+      report: function (code, leader) {
+        if (code === 'demo-admin' && leader) return leaderFor(+leader.slice(1) - 1, true);
+        if (code === 'demo-admin') {
+          var rows = NAMES.map(function (n, t) {
+            var qa = questions.map(function (q) { return { value: q.value, avg: mean(scoresFor(t, q.id)) }; });
+            var given = {}; responses.forEach(function (x) { if (x.rater === t) given[x.ratee] = 1; });
+            var raters = {}; responses.forEach(function (x) { if (x.ratee === t) raters[x.rater] = 1; });
+            return { id: 'L' + (t + 1), name: n, given: Object.keys(given).length, raters: Object.keys(raters).length,
+              overall: r2(mean(qa.map(function (q) { return q.avg; }))), values: byValue(qa, function (vq) { return { score: r2(mean(vq.map(function (q) { return q.avg; }))) }; }) };
+          });
+          var tv = byValue(questions.map(function (q) { return { value: q.value, avg: teamQ[q.id] }; }), function (vq) { return { score: r2(mean(vq.map(function (q) { return q.avg; }))) }; });
+          return wait({ type: 'admin', title: 'In Symmetry', subtitle: 'Leadership Values 360', scale: SCALE, open: true, released: false, minRaters: 3,
+            expected: NAMES.length - 1, leaders: rows, teamValues: tv, teamOverall: r2(mean(tv.map(function (v) { return v.score; }))),
+            totals: { done: rows.reduce(function (a, r) { return a + r.given; }, 0), expected: NAMES.length * (NAMES.length - 1) } });
+        }
         if (code === 'demo-md') {
           var qs = questions.map(function (q) {
             var all = responses.filter(function (x) { return x.qid === q.id; }).map(function (x) { return x.score; });
@@ -792,13 +879,16 @@ var CONFIG = {
               return { score: r2(mean(vq.map(function (q) { return q.avg; }))), bands: b };
             }) });
         }
-        var t = 1;
-        var qs2 = questions.map(function (q) { var l = scoresFor(t, q.id); return { id: q.id, value: q.value, text: q.text, avg: r2(mean(l)), dist: dist(l), team: teamQ[q.id] }; });
-        return wait({ type: 'leader', title: 'In Symmetry', subtitle: 'Leadership Values 360', name: 'Example leader', scale: SCALE, released: true, raters: NAMES.length - 1, minRaters: 3,
-          overall: r2(mean(qs2.map(function (q) { return q.avg; }))), teamOverall: r2(mean(qs2.map(function (q) { return q.team; }))), questions: qs2,
-          values: byValue(qs2, function (vq) { return { score: r2(mean(vq.map(function (q) { return q.avg; }))), team: r2(mean(vq.map(function (q) { return q.team; }))) }; }) });
+        return leaderFor(1, false);
       }
     };
+    function leaderFor(t, admin) {
+        var nr = {}; responses.forEach(function (x) { if (x.ratee === t) nr[x.rater] = 1; });
+        var qs2 = questions.map(function (q) { var l = scoresFor(t, q.id); return { id: q.id, value: q.value, text: q.text, avg: r2(mean(l)), dist: dist(l), team: teamQ[q.id] }; });
+        return wait({ type: 'leader', admin: admin, title: 'In Symmetry', subtitle: 'Leadership Values 360', name: admin ? NAMES[t] : 'Example leader', scale: SCALE, released: true, raters: admin ? Object.keys(nr).length : NAMES.length - 1, minRaters: 3,
+          overall: r2(mean(qs2.map(function (q) { return q.avg; }))), teamOverall: r2(mean(qs2.map(function (q) { return q.team; }))), questions: qs2,
+          values: byValue(qs2, function (vq) { return { score: r2(mean(vq.map(function (q) { return q.avg; }))), team: r2(mean(vq.map(function (q) { return q.team; }))) }; }) });
+    }
   }
 })();
 </script>
