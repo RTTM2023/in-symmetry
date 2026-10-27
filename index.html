@@ -231,6 +231,7 @@ main{padding-block:36px 64px}
 .person[aria-pressed="true"] .tickmark::after{content:"";position:absolute;left:6px;top:2px;width:5px;height:10px;border:solid var(--sel-ink);border-width:0 2px 2px 0;transform:rotate(45deg)}
 .rels{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .rel{display:flex;gap:12px;align-items:flex-start;padding:16px;border:1px solid var(--line);border-radius:var(--r);cursor:pointer;background:var(--paper)}
+.rels3{grid-template-columns:repeat(3,minmax(0,1fr))}
 .rel:hover{border-color:var(--charcoal)}
 .rel input{accent-color:var(--orange);width:18px;height:18px;margin:2px 0 0;flex:none}
 .rel:has(input:checked){border-color:var(--sel);box-shadow:inset 0 0 0 1px var(--sel)}
@@ -250,7 +251,7 @@ main{padding-block:36px 64px}
 .lens .num{opacity:.75;margin-left:5px}
 .plot.dots{height:34px}
 .dot{position:absolute;width:12px;height:12px;margin-left:-8px;border-radius:50%;border:2px solid var(--paper)}
-.g-exco{background:var(--charcoal)} .g-direct{background:var(--orange)} .g-indirect{background:var(--s2)} .g-staff{background:var(--orange)}
+.g-exco{background:var(--charcoal)} .g-direct{background:var(--orange)} .g-indirect{background:var(--s2)} .g-staff{background:var(--orange)} .g-line{background:var(--orange)} .g-wider{background:var(--s1)}
 .sw.dotsw{border-radius:50%}
 .gap{font-size:12px;color:var(--muted);text-align:right}
 .nas{display:block;font-size:12px;color:var(--muted);margin-top:3px}
@@ -265,7 +266,7 @@ main{padding-block:36px 64px}
 
 @media (max-width:760px){
   .hero{grid-template-columns:1fr}
-  .rels{grid-template-columns:1fr}
+  .rels,.rels3{grid-template-columns:1fr}
   .tiles{grid-template-columns:repeat(2,minmax(0,1fr))}
   .ranked{grid-template-columns:1fr}
   .views{grid-template-columns:1fr}
@@ -405,7 +406,7 @@ var CONFIG = {
     var intro;
     if (!d.open && done < total) intro = '<div class="note">The survey is now closed. Thank you for the ratings you gave.</div>';
     else if (done === total) intro = '<div class="note"><b>All done.</b> You have rated all ' + total + ' colleagues. Thank you' + (d.cultureCode ? '.' : ', there is nothing more you need to do.') + '</div>' + cultureNext(d.cultureCode);
-    else if (d.preview) intro = '<p class="lead">This is a practice run with the real questions. Choose any colleague and rate them as you would in the live survey. In the live survey, each leader sees their eight colleagues.</p>';
+    else if (d.preview) intro = '<p class="lead">This is a practice run with the real questions. Choose any colleague and rate them as you would in the live survey. In the live survey, each EXCO member sees their fellow EXCO members.</p>';
     else intro = '<p class="lead">Rate each colleague on how they live the four values. Choose a name to begin. Each one takes about five minutes, and you can do them one at a time over several sittings.</p>';
 
     app.innerHTML =
@@ -455,75 +456,117 @@ var CONFIG = {
 
   function saveDraft() {
     if (S.mode === 'culture') { if (!S.cur.preview) store(S.cur.key, { department: S.dept, answers: S.cur.answers }); return; }
-    if (S.mode === 'staff') { if (!S.cur.preview) store(S.cur.key, { leader: S.cur.c.id, group: S.cur.group, answers: S.cur.answers }); }
+    if (S.mode === 'staff') { S.answers = S.cur.answers; saveStaff(); }
     else store(S.cur.key, S.cur.answers);
   }
-  function groupPhrase(g) { return g === 'Direct' ? 'You report directly' : 'You report through someone else'; }
+  function groupPhrase(g, name) {
+    var f = name ? firstName(name) : 'them';
+    if (g === 'Direct') return name ? 'You report directly to ' + f : 'You report directly';
+    if (g === 'Indirect') return name ? 'You report to ' + f + ' through someone else' : 'You report through someone else';
+    return name ? 'You work with ' + f + ', outside their reporting line' : 'Outside their reporting line';
+  }
 
-  /* ---------- staff survey: one general link, no names ---------- */
+  /* ---------- staff survey (Option 1): one shared link, no names ----------
+     Everyone rates their own EXCO leader, then a second EXCO member (required),
+     then may rate more before the culture survey. Each rating is sent on its
+     own as soon as it is finished. */
   function staffKey() { return 'sym:staff:' + S.code; }
+  function saveStaff() {
+    if (S.data.preview) return;
+    store(staffKey(), { rated: S.rated, leader: S.sel.leader, group: S.sel.group, answers: S.answers });
+  }
   function loadStaff(code) {
-    loading();
-    api.survey(code).then(function (d) {
-      if (d.error) return errorView(d.error);
-      if (d.type !== 'staff') return errorView('This link is not recognised. Check you have the full link from your email.');
+    loading('Loading the survey. The first time can take a few seconds.');
+    var cacheKey = 'sym:payload:staff:' + code, shown = false;
+    function start(d) {
       S = { mode: 'staff', code: code, data: d };
       setTitle(d.title);
       who.textContent = '';
       var draft = d.preview ? null : store(staffKey());
+      S.rated = (draft && draft.rated) || [];
       S.sel = { leader: draft && draft.leader, group: draft && draft.group };
       S.answers = (draft && draft.answers) || {};
       if (!d.preview && store(staffKey() + ':done')) return staffDone();
+      if (S.rated.length >= 2 && !S.sel.leader) return staffChoice();
       staffHome();
-    }).catch(function () { errorView('We could not reach the survey. Check your connection and refresh the page.'); });
+    }
+    // Show the last copy saved on this device straight away, then refresh it.
+    var cached = !params.has('demo') && store(cacheKey);
+    if (cached && cached.type === 'staff') { start(cached); shown = true; }
+    api.survey(code).then(function (d) {
+      if (d.error) return errorView(d.error);
+      if (d.type !== 'staff') return errorView('This link is not recognised. Check you have the full link from your email.');
+      if (!d.preview) store(cacheKey, d);
+      if (d.cultureCode && !d.preview) api.culture(d.cultureCode).then(function (c) { if (!c.error) store('sym:payload:culture:' + d.cultureCode, c); }).catch(function () {});
+      if (!shown) return start(d);
+      var changed = JSON.stringify(d) !== JSON.stringify(S.data);
+      S.data = d;
+      if (changed && !S.cur && S.mode === 'staff') { if (S.rated.length >= 2 && !S.sel.leader) staffChoice(true); else staffHome(null, true); }
+    }).catch(function () { if (!shown) errorView('We could not reach the survey. Check your connection and refresh the page.'); });
   }
   function staffLeader(id) { return S.data.leaders.filter(function (l) { return l.id === id; })[0]; }
+  function ratedIds() { var o = {}; (S.rated || []).forEach(function (r) { o[r.id] = r; }); return o; }
 
   function staffHome(note, keepScroll) {
     ratebarSlot.innerHTML = '';
+    S.cur = null;
     var d = S.data, sel = S.sel, L = sel.leader ? staffLeader(sel.leader) : null, first = L ? firstName(L.name) : '';
+    var stage = S.rated.length, done = ratedIds();
     var people = d.leaders.map(function (l) {
-      var meta = [l.title, l.area].filter(Boolean).join(' · ');
-      return '<button class="person pick" data-id="' + esc(l.id) + '" aria-pressed="' + (sel.leader === l.id) + '"' + (d.open ? '' : ' disabled') + '>' +
+      var meta = [l.title, l.area].filter(Boolean).join(' · '), isDone = !!done[l.id];
+      return '<button class="person pick" data-id="' + esc(l.id) + '" aria-pressed="' + (sel.leader === l.id) + '"' + (d.open && !isDone ? '' : ' disabled') + '>' +
         '<span class="pinfo"><span class="pname">' + esc(l.name) + '</span>' + (meta ? '<span class="ptitle">' + esc(meta) + '</span>' : '') + '</span>' +
-        '<span class="tickmark" aria-hidden="true"></span></button>';
+        (isDone ? '<span class="state done">Done</span>' : '<span class="tickmark" aria-hidden="true"></span>') + '</button>';
     }).join('');
     var rel = function (val, head, sub) {
       return '<label class="rel"><input type="radio" name="rel" value="' + val + '"' + (sel.group === val ? ' checked' : '') + '>' +
         '<span><b>' + head + '</b><small>' + esc(sub) + '</small></span></label>';
     };
+    var rels = stage === 0
+      ? rel('Direct', 'Directly.', first + ' is my line manager.') + rel('Indirect', 'Through someone else.', 'I report to a manager who works under ' + first + '.')
+      : rel('Wider', 'Not in their reporting line.', 'I work with ' + first + ', but I don\'t report to them.') + rel('Direct', 'Directly.', first + ' is my line manager.') + rel('Indirect', 'Through someone else.', 'I report to a manager who works under ' + first + '.');
+    var pips = '<div class="pips" aria-hidden="true"><i class="pip' + (stage >= 1 ? ' on' : '') + '"></i><i class="pip' + (stage >= 2 ? ' on' : '') + '"></i></div>';
+    var heading = stage === 0 ? (d.preview ? 'Try the staff survey' : 'Rate your EXCO leaders') : (stage === 1 ? 'Now rate a second EXCO member' : 'Rate another EXCO member');
+    var lead = stage === 0
+      ? 'You\'ll rate two EXCO members: first the one you report to, then one more you work with. Each takes about five minutes. Your answers are anonymous: we don\'t ask for your name or email, and leaders only see averages from groups of at least ' + (d.minRaters || 3) + ' people.'
+      : (stage === 1 ? 'Everyone rates their own leader and one more EXCO member. Choose someone you work with, even if not every day: you can choose ' + esc(d.na) + ' for anything you haven\'t seen.'
+        : 'This one is optional. Choose another EXCO member you work with.');
+    var q1 = stage === 0 ? 'Which EXCO member do you report to?' : 'Which EXCO member would you like to rate?';
+    var q1sub = stage === 0 ? 'Pick the EXCO member at the top of your reporting line. They might be your own manager, or your manager\'s manager.' : '';
     app.innerHTML =
       '<div class="stack">' +
         '<div class="section">' +
-          '<span class="eyebrow">' + esc(d.subtitle || 'Leadership Values 360') + '</span>' +
-          '<h1>' + (d.preview ? 'Try the staff survey' : 'Rate your EXCO leader') + '</h1>' +
+          '<div class="row" style="justify-content:space-between"><span class="eyebrow">' + esc(d.subtitle || 'Leadership Values 360') + '</span>' +
+            (stage < 2 ? '<span class="row" style="gap:8px">' + pips + '<span class="num muted" style="font-size:14px">' + stage + ' of 2 done</span></span>' : '') + '</div>' +
+          '<h1>' + heading + '</h1>' +
           (d.open ? '' : '<div class="note">The survey is now closed. Thank you to everyone who took part.</div>') +
           (note ? '<div class="note">' + esc(note) + '</div>' : '') +
-          '<p class="lead">This takes about ten minutes. Your answers are anonymous: we don\'t ask for your name or email, and leaders only see averages from groups of at least ' + (d.minRaters || 3) + ' people.</p>' +
+          '<p class="lead">' + lead + '</p>' +
         '</div>' +
         '<div class="section">' +
-          '<h2>Which EXCO member do you report to?</h2>' +
-          '<p class="muted" style="max-width:66ch">Pick the EXCO member at the top of your reporting line. They might be your own manager, or your manager\'s manager.</p>' +
+          '<h2>' + q1 + '</h2>' +
+          (q1sub ? '<p class="muted" style="max-width:66ch">' + q1sub + '</p>' : '') +
           '<div class="people">' + people + '</div>' +
         '</div>' +
         (L ? '<div class="section" id="relsec">' +
-          '<h2>How do you report to ' + esc(first) + '?</h2>' +
-          '<div class="rels">' + rel('Direct', 'Directly.', first + ' is my line manager.') + rel('Indirect', 'Through someone else.', 'I report to a manager who works under ' + first + '.') + '</div>' +
-          '<p class="muted" style="max-width:66ch">This lets ' + esc(first) + ' see how leadership lands close up and further away. Neither group\'s results are ever shown unless at least ' + (d.minRaters || 3) + ' people answered, so no one can be identified.</p>' +
+          '<h2>How do you work with ' + esc(first) + '?</h2>' +
+          '<div class="rels' + (stage ? ' rels3' : '') + '">' + rels + '</div>' +
+          '<p class="muted" style="max-width:66ch">This lets ' + esc(first) + ' see how leadership lands with different groups. No group\'s results are ever shown unless at least ' + (d.minRaters || 3) + ' people are in it, so no one can be identified.</p>' +
         '</div>' : '') +
         '<div class="row"><button class="btn" id="startq"' + (L && sel.group && d.open ? '' : ' disabled') + '>' + (Object.keys(S.answers).length ? 'Continue the questions' : 'Start the questions') + '</button>' +
-          '<span class="muted" style="font-size:14px">' + (!L ? 'Choose your EXCO leader first.' : (!sel.group ? 'Then choose how you report to ' + esc(first) + '.' : '31 questions across the four values.')) + '</span></div>' +
-        '<div class="section">' +
+          '<span class="muted" style="font-size:14px">' + (!L ? 'Choose an EXCO member first.' : (!sel.group ? 'Then choose how you work with ' + esc(first) + '.' : '31 questions across the four values.')) + '</span>' +
+          (stage >= 2 ? '<button class="backlink" id="tochoice">Back</button>' : '') + '</div>' +
+        (stage === 0 ? '<div class="section">' +
           '<h2>Before you start</h2>' +
           '<ul class="muted" style="margin:0;padding-left:18px;max-width:66ch;display:flex;flex-direction:column;gap:6px">' +
-            '<li>Answer from what you have seen ' + (first ? esc(first) : 'your leader') + ' do, not what you think they intend.</li>' +
+            '<li>Answer from what you have seen each leader do, not what you think they intend.</li>' +
             '<li>If you haven\'t seen a behaviour, choose <b>' + esc(d.na) + '</b>. It is left out of the averages.</li>' +
             '<li>Your answers save on this device as you go, so you can stop and come back.</li>' +
-            '<li>Once you submit, your ratings are final.</li>' +
+            '<li>Each rating is final once you submit it.</li>' +
           '</ul>' +
-        '</div>' +
-        (d.preview ? '<div class="section"><h2>See the results views</h2><p class="muted" style="max-width:66ch">These show sample scores, not the ratings you gave here.</p>' +
-          '<div class="row"><button class="btn" data-go="results">Example personal results</button><button class="btn ghost" data-go="md">MD team view</button></div></div>' : '') +
+        '</div>' : '') +
+        (d.preview && stage === 0 ? '<div class="section"><h2>See the results views</h2><p class="muted" style="max-width:66ch">These show sample scores, not the ratings you gave here.</p>' +
+          '<div class="row"><button class="btn" data-go="results">Example personal results</button><button class="btn ghost" data-go="md">MD and HR view</button></div></div>' : '') +
       '</div>';
     app.querySelectorAll('[data-go]').forEach(function (b) { b.addEventListener('click', function () { openDemo(b.getAttribute('data-go')); }); });
     app.querySelectorAll('.person.pick:not([disabled])').forEach(function (b) {
@@ -534,7 +577,7 @@ var CONFIG = {
         }
         if (S.sel.leader !== id) S.sel.group = null;
         S.sel.leader = id;
-        if (!S.data.preview) store(staffKey(), { leader: id, group: S.sel.group, answers: S.answers });
+        saveStaff();
         staffHome(msg, true);
         var r = document.getElementById('relsec'); if (r && r.scrollIntoView) r.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
       });
@@ -542,11 +585,13 @@ var CONFIG = {
     app.querySelectorAll('input[name=rel]').forEach(function (i) {
       i.addEventListener('change', function () {
         S.sel.group = i.value;
-        if (!S.data.preview) store(staffKey(), { leader: S.sel.leader, group: S.sel.group, answers: S.answers });
+        saveStaff();
         var btn = document.getElementById('startq'); btn.disabled = !S.data.open;
         btn.nextElementSibling.textContent = '31 questions across the four values.';
       });
     });
+    var tc = document.getElementById('tochoice');
+    if (tc) tc.addEventListener('click', function () { S.sel = {}; S.answers = {}; saveStaff(); staffChoice(); });
     document.getElementById('startq').addEventListener('click', function () {
       var l = staffLeader(S.sel.leader);
       S.cur = { c: { id: l.id, name: l.name }, group: S.sel.group, key: staffKey(), answers: S.answers, step: 0, confirm: false, preview: S.data.preview };
@@ -555,31 +600,59 @@ var CONFIG = {
     if (!keepScroll) top();
   }
 
-  function staffThanks(name) {
+  // After the two required ratings: rate another, or move on.
+  function staffChoice(keepScroll) {
     ratebarSlot.innerHTML = '';
+    S.cur = null;
+    var d = S.data, names = S.rated.map(function (r) { return r.name; });
+    var left = d.leaders.filter(function (l) { return !ratedIds()[l.id]; }).length;
+    var list = names.length > 1 ? names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1] : names[0];
     app.innerHTML =
-      '<div class="stack"><div class="section"><span class="eyebrow">' + esc(S.data.subtitle || 'Leadership Values 360') + '</span>' +
-        '<h1>Thank you</h1><p class="lead">Your ratings for ' + esc(name) + ' are in.' + (S.data.cultureCode ? '' : ' You can close this page.') + '</p>' +
-        '<p class="muted" style="max-width:66ch">Results are shared once the survey closes, and only as averages from groups of at least ' + (S.data.minRaters || 3) + ' people.</p></div>' +
-        cultureNext(S.data.cultureCode) +
-        (S.data.preview ? '<div class="row"><button class="btn ghost" data-go="results">Example personal results</button><button class="btn ghost" id="again">Try the staff survey again</button></div>' : '') +
+      '<div class="stack">' +
+        '<div class="section"><span class="eyebrow">' + esc(d.subtitle || 'Leadership Values 360') + '</span>' +
+          '<h1>Thank you</h1><p class="lead">Your ratings for ' + esc(list) + ' are in.</p></div>' +
+        (d.cultureCode
+          ? '<div class="confirm"><h2>Next: the culture survey</h2>' +
+              '<p>31 short statements about the people you work with day to day. About eight minutes, and kept completely separate from the ratings you just gave.</p>' +
+              '<div class="row"><button class="btn" id="tocult">Continue to the culture survey</button></div></div>'
+          : '<div class="confirm"><p>That\'s everything you need to do.</p><div class="row"><button class="btn" id="finish">Finish</button></div></div>') +
+        (left ? '<div class="section"><h2>Want to rate another EXCO member?</h2>' +
+          '<p class="muted" style="max-width:66ch">Optional. If you work closely with another EXCO member, your view helps them too.</p>' +
+          '<div class="row"><button class="btn ghost" id="another">Rate another EXCO member</button></div></div>' : '') +
+        (d.preview ? '<div class="row"><button class="btn ghost" data-go="results">Example personal results</button><button class="btn ghost" id="again">Try the staff survey again</button></div>' : '') +
       '</div>';
-    bindCultureNext(S.data.cultureCode);
     app.querySelectorAll('[data-go]').forEach(function (b) { b.addEventListener('click', function () { openDemo(b.getAttribute('data-go')); }); });
+    var an = document.getElementById('another');
+    if (an) an.addEventListener('click', function () { S.sel = {}; S.answers = {}; staffHome(); });
+    var tcu = document.getElementById('tocult');
+    if (tcu) tcu.addEventListener('click', function () {
+      if (!d.preview) store(staffKey() + ':done', { at: Date.now() });
+      loadCulture(d.cultureCode);
+    });
+    var fin = document.getElementById('finish');
+    if (fin) fin.addEventListener('click', function () {
+      if (!d.preview) store(staffKey() + ':done', { at: Date.now() });
+      ratebarSlot.innerHTML = '';
+      app.innerHTML = '<div class="stack"><div class="section"><h1>Thank you</h1><p class="lead">You\'re all done. You can close this page.</p></div></div>';
+      top();
+    });
     var again = document.getElementById('again');
-    if (again) again.addEventListener('click', function () { S.sel = {}; S.answers = {}; staffHome(); });
-    top();
+    if (again) again.addEventListener('click', function () { S.rated = []; S.sel = {}; S.answers = {}; staffHome(); });
+    if (!keepScroll) top();
   }
 
   function staffDone() {
     ratebarSlot.innerHTML = '';
     app.innerHTML =
       '<div class="stack"><div class="section"><span class="eyebrow">' + esc(S.data.subtitle || 'Leadership Values 360') + '</span>' +
-        '<h1>You\'ve already taken part</h1><p class="lead">A response has already been sent from this device. Thank you.</p>' +
+        '<h1>You\'ve already taken part</h1><p class="lead">Ratings have already been sent from this device. Thank you.</p>' +
+        (S.data.cultureCode ? '<p class="muted">Haven\'t done the culture survey yet? <button class="backlink" id="tocult">Go to the culture survey</button></p>' : '') +
         '<p class="muted">Someone else using this device? <button class="backlink" id="fresh">Start a new response</button></p></div></div>';
     document.getElementById('fresh').addEventListener('click', function () {
-      store(staffKey() + ':done', null); S.sel = {}; S.answers = {}; staffHome();
+      store(staffKey() + ':done', null); store(staffKey(), null); S.rated = []; S.sel = {}; S.answers = {}; staffHome();
     });
+    var tc = document.getElementById('tocult');
+    if (tc) tc.addEventListener('click', function () { loadCulture(S.data.cultureCode); });
     top();
   }
 
@@ -673,7 +746,7 @@ var CONFIG = {
       '<div class="stack">' +
         '<div class="section"><span class="eyebrow">Last step</span><h1>' + (S.mode === 'culture' ? 'Submit your culture survey' : 'Submit your ratings for ' + esc(name)) + '</h1>' +
           (S.mode === 'culture' && S.dept ? '<p class="muted">Department: ' + esc(S.dept) + '. <button class="backlink" id="change">Change</button></p>' : '') +
-          (staff ? '<p class="muted">' + esc(groupPhrase(S.cur.group)) + ' to ' + esc(firstName(name)) + '. <button class="backlink" id="change">Change</button></p>' : '') + '</div>' +
+          (staff ? '<p class="muted">' + esc(groupPhrase(S.cur.group, name)) + '. <button class="backlink" id="change">Change</button></p>' : '') + '</div>' +
         (incomplete.length
           ? '<div class="note">Some questions still need an answer in: ' + esc(incomplete.join(', ')) + '. Use the tabs above to finish them.</div>'
           : (staff && nas === totalQ() ? '<div class="note">You chose ' + esc(S.data.na) + ' for every question. Please rate at least one behaviour you have seen before you submit.</div>' :
@@ -700,9 +773,11 @@ var CONFIG = {
           return cultureThanks();
         }
         if (staff) {
-          if (!S.data.preview) store(staffKey() + ':done', { at: Date.now() });
+          S.rated.push({ id: S.cur.c.id, name: name, group: S.cur.group });
           S.sel = {}; S.answers = {};
-          return staffThanks(name);
+          saveStaff();
+          if (S.rated.length < 2) return staffHome('Thank you. Your ratings for ' + name + ' are in.');
+          return staffChoice();
         }
         S.cur.c.done = true;
         surveyHome('Thank you. Your ratings for ' + name + ' are in.');
@@ -715,9 +790,9 @@ var CONFIG = {
   /* ================================================================== */
   function cultureKey() { return 'sym:culture:' + S.code; }
   function loadCulture(code) {
-    loading();
-    api.culture(code).then(function (d) {
-      if (d.error) return errorView(d.error);
+    loading('Loading the survey. The first time can take a few seconds.');
+    var cacheKey = 'sym:payload:culture:' + code, cached = !params.has('demo') && store(cacheKey);
+    var go = function (d) {
       S = { mode: 'culture', code: code, data: d };
       setTitle(d.title);
       who.textContent = d.role === 'EXCO' ? 'EXCO' : '';
@@ -726,7 +801,16 @@ var CONFIG = {
       S.answers = (draft && draft.answers) || {};
       if (!d.preview && store(cultureKey() + ':done')) return cultureDone();
       cultureHome();
-    }).catch(function () { errorView('We could not reach the survey. Check your connection and refresh the page.'); });
+    };
+    if (cached && cached.type === 'culture') go(cached);
+    api.culture(code).then(function (d) {
+      if (d.error) return cached ? null : errorView(d.error);
+      if (!d.preview) store(cacheKey, d);
+      if (!cached) return go(d);
+      var changed = JSON.stringify(d) !== JSON.stringify(S.data);
+      if (S.mode === 'culture') S.data = d;
+      if (changed && S.mode === 'culture' && !S.cur) cultureHome(true);
+    }).catch(function () { if (!cached) errorView('We could not reach the survey. Check your connection and refresh the page.'); });
   }
 
   function cultureHome(keepScroll) {
@@ -900,7 +984,7 @@ var CONFIG = {
     api.report(code).then(function (d) {
       if (d.error) return errorView(d.error);
       setTitle(d.title);
-      if (d.type === 'md') { who.textContent = 'Team overview'; mdView(d); }
+      if (d.type === 'md') { who.textContent = d.viewer === 'HR' ? 'HR overview' : 'Team overview'; mdView(d); }
       else if (d.type === 'admin') { who.textContent = 'Admin'; adminView(d, code); }
       else { who.textContent = d.name; leaderView(d); }
     }).catch(function () { errorView('We could not load these results. Check your connection and refresh the page.'); });
@@ -980,7 +1064,7 @@ var CONFIG = {
 
     // Who rated: "8 EXCO peers, 4 staff who report directly and 3 who report through someone else"
     var gl = (d.groups || []).map(function (g) {
-      return g.raters + ' ' + ({ exco: 'EXCO peers', staff: 'staff', direct: 'staff who report directly', indirect: (d.groups.length > 2 ? 'who report through someone else' : 'staff who report through someone else') })[g.key];
+      return g.raters + ' ' + ({ exco: 'EXCO peers', staff: 'staff', line: 'staff in your reporting line', direct: 'staff who report directly', indirect: 'staff who report through someone else', wider: 'staff from the wider business' })[g.key];
     });
     var basis = gl.length > 1 ? gl.slice(0, -1).join(', ') + ' and ' + gl[gl.length - 1] : (gl[0] || d.raters + ' people');
 
@@ -1019,7 +1103,7 @@ var CONFIG = {
     if (lensKey === undefined) top();
   }
 
-  var GROUP_SHORT = { exco: 'EXCO peers', staff: 'Staff', direct: 'Report directly', indirect: 'Report through someone else' };
+  var GROUP_SHORT = { exco: 'EXCO peers', staff: 'Staff', line: 'Reporting line', direct: 'Report directly', indirect: 'Report through someone else', wider: 'Wider business' };
   // One row per value: a dot for each group of raters shown on its own.
   function groupCompare(d, lenses, adm) {
     var gs = (d.groups || []).map(function (g) { return lenses.filter(function (l) { return l.key === g.key; })[0]; }).filter(Boolean);
@@ -1028,13 +1112,13 @@ var CONFIG = {
       var pts = gs.map(function (l, i) { return { key: l.key, s: l.values[vi].score, i: i }; }).filter(function (p) { return p.s != null; });
       var ss = pts.map(function (p) { return p.s; });
       var gap = ss.length > 1 ? Math.max.apply(null, ss) - Math.min.apply(null, ss) : null;
-      var top0 = gs.length === 2 ? [7, 19] : [2, 12, 22];
+      var top0 = gs.length === 2 ? [7, 19] : (gs.length === 3 ? [2, 12, 22] : [0, 7, 14, 21]);
       return '<div class="vbar"><span class="lab">' + esc(v.name) + '</span><div class="plot dots">' +
         pts.map(function (p) { return '<i class="dot g-' + p.key + '" style="left:' + pct(p.s) + '%;top:' + top0[p.i] + 'px" data-tip="' + esc(GROUP_SHORT[p.key] + ': ' + fmt(p.s)) + '"></i>'; }).join('') +
         '</div><span class="gap num">' + (gap != null ? 'gap ' + gap.toFixed(1) : '') + '</span></div>';
     }).join('');
     return '<div class="section"><div class="section-head"><i class="mark"></i><h2>How each group sees ' + (adm ? esc(firstName(d.name)) : 'you') + '</h2></div>' +
-      '<p class="muted" style="max-width:66ch">Average score for each value, by who gave the rating. A wide gap means leadership lands differently ' + (gs.some(function (l) { return l.key === 'exco'; }) ? 'with peers than with staff' : 'close up than further away') + '.</p>' +
+      '<p class="muted" style="max-width:66ch">Average score for each value, by who gave the rating. A wide gap means leadership lands differently with different groups.</p>' +
       '<div class="legend">' + gs.map(function (l) { return '<span><i class="sw dotsw g-' + l.key + '"></i>' + esc(GROUP_SHORT[l.key]) + '</span>'; }).join('') + '</div>' +
       '<div class="vbars">' + rows + axis() + '</div></div>';
   }
@@ -1063,18 +1147,19 @@ var CONFIG = {
     }
     var vnames = d.teamValues.map(function (v) { return v.name; });
     function cell(x) { return '<td class="num">' + fmt(x) + '</td>'; }
-    var head = '<tr><th>Leader</th><th class="num" title="EXCO peers who have rated this leader">Peers</th><th class="num" title="Staff who report directly">Direct</th><th class="num" title="Staff who report through someone else">Through</th><th class="num">Overall</th>' +
+    var head = '<tr><th>Leader</th><th class="num" title="EXCO peers who have rated this leader">Peers</th><th class="num" title="Staff who report directly">Direct</th><th class="num" title="Staff who report through someone else">Through</th><th class="num" title="Staff from the wider business, not in the reporting line">Wider</th><th class="num">Overall</th>' +
       vnames.map(function (n) { return '<th class="num">' + esc(n) + '</th>'; }).join('') + '<th class="num">By peers</th><th class="num">By staff</th><th></th></tr>';
-    var teamRow = '<tr class="teamrow"><td>Team average</td><td></td><td></td><td></td>' + cell(d.teamOverall) +
+    var teamRow = '<tr class="teamrow"><td>Team average</td><td></td><td></td><td></td><td></td>' + cell(d.teamOverall) +
       d.teamValues.map(function (v) { return cell(v.score); }).join('') + '<td></td><td></td><td></td></tr>';
     var rows = d.leaders.map(function (l) {
-      var c = l.counts || { exco: l.raters, direct: 0, indirect: 0 }, m = d.minRaters;
-      var staffN = c.direct + c.indirect;
-      var staffFlag = !staffN ? '' : (staffN < m ? ' <span class="flag" title="Too few staff: staff ratings are left out of what the leader sees">hidden</span>'
-        : (l.merged ? ' <span class="flag" title="One staff group is under ' + m + ', so the leader sees staff combined">combined</span>' : ''));
+      var c = l.counts || { exco: l.raters, direct: 0, indirect: 0, wider: 0 }, m = d.minRaters;
+      c.wider = c.wider || 0;
+      var staffN = c.direct + c.indirect + c.wider;
+      var staffFlag = !staffN ? '' : (l.staffHidden ? ' <span class="flag" title="Too few staff: staff ratings are left out of what the leader sees">hidden</span>'
+        : (l.merged ? ' <span class="flag" title="A staff group is under ' + m + ', so the leader sees some groups combined">combined</span>' : ''));
       return '<tr><td><b>' + esc(l.name) + '</b></td>' +
         '<td class="num">' + c.exco + ' / ' + d.expected + (c.exco < m ? ' <span class="flag" title="Below the minimum: peer ratings are left out of what the leader sees">below ' + m + '</span>' : '') + '</td>' +
-        '<td class="num">' + c.direct + '</td><td class="num">' + c.indirect + staffFlag + '</td>' +
+        '<td class="num">' + c.direct + '</td><td class="num">' + c.indirect + '</td><td class="num">' + c.wider + staffFlag + '</td>' +
         cell(l.overall) + l.values.map(function (v) { return cell(v.score); }).join('') + cell(l.exco) + cell(l.staff) +
         '<td><button class="btn ghost sm" data-leader="' + esc(l.id) + '"' + (c.exco + staffN ? '' : ' disabled') + '>Open</button></td></tr>';
     }).join('');
@@ -1086,7 +1171,7 @@ var CONFIG = {
     app.innerHTML =
       '<div class="stack">' +
         ahead +
-          '<div class="row"><span class="chip">Survey ' + (d.open ? 'open' : 'closed') + '</span><span class="chip">Results ' + (d.released ? 'released' : 'hidden from leaders and MD') + '</span><span class="chip num">EXCO: ' + d.totals.done + ' of ' + d.totals.expected + ' ratings in (' + pctDone + '%)</span><span class="chip num">Staff: ' + (d.staffResponses || 0) + ' responses</span>' + (d.culture ? '<span class="chip num">Culture: ' + d.culture.total + ' responses</span>' : '') + '</div></div>' + tabs +
+          '<div class="row"><span class="chip">Survey ' + (d.open ? 'open' : 'closed') + '</span><span class="chip">Results ' + (d.released ? 'released' : 'hidden from leaders, MD and HR') + '</span><span class="chip num">EXCO: ' + d.totals.done + ' of ' + d.totals.expected + ' ratings in (' + pctDone + '%)</span><span class="chip num">Staff: ' + (d.staffResponses || 0) + ' ratings</span>' + (d.culture ? '<span class="chip num">Culture: ' + d.culture.total + ' responses</span>' : '') + '</div></div>' + tabs +
         '<div class="section"><div class="section-head"><i class="mark"></i><h2>Scores by leader</h2></div>' +
           '<p class="muted" style="max-width:66ch">Average rating from everyone who rated each leader, 1 to 5, with no minimums applied. Flags show where the leader will see less than you do. Open a leader for their full dashboard.</p>' +
           '<div class="tablewrap"><table class="atable">' + head + teamRow + rows + '</table></div></div>' +
@@ -1131,10 +1216,10 @@ var CONFIG = {
       '<div style="overflow-x:auto"><table class="ctable">' + rows + '</table></div></div>';
     if (d.staffCompletion) {
       var srows = d.staffCompletion.map(function (c) {
-        return '<tr><td>' + esc(c.name) + '</td><td class="num muted">' + c.direct + ' direct · ' + c.indirect + ' through someone else</td><td class="num">' + c.total + '</td></tr>';
+        return '<tr><td>' + esc(c.name) + '</td><td class="num muted">' + c.direct + ' direct · ' + c.indirect + ' through someone else · ' + (c.wider || 0) + ' wider business</td><td class="num">' + c.total + '</td></tr>';
       }).join('');
-      completion += '<div class="section"><div class="section-head"><i class="mark"></i><h2>Staff responses</h2></div>' +
-        '<p class="muted num">' + (d.staffResponses || 0) + ' staff responses so far, by the EXCO member they rated. Counts only, no scores.</p>' +
+      completion += '<div class="section"><div class="section-head"><i class="mark"></i><h2>Staff ratings</h2></div>' +
+        '<p class="muted num">' + (d.staffResponses || 0) + ' staff ratings so far, by the EXCO member rated. Each staff member gives at least two. Counts only, no scores.</p>' +
         '<div style="overflow-x:auto"><table class="ctable">' + srows + '</table></div></div>';
     }
 
@@ -1232,14 +1317,14 @@ var CONFIG = {
     app.innerHTML =
       '<div class="stack">' +
         '<div class="section"><span class="demo-tag">Preview with sample data</span><h1>In Symmetry</h1>' +
-          '<p class="lead">A leadership values 360 for the Symmetry EXCO, and a culture survey for everyone. Each EXCO member is rated by their eight peers and by the staff in their area, then sees their own results privately. The MD sees the team and culture picture without names.</p>' +
+          '<p class="lead">A leadership values 360 for the Symmetry EXCO, and a culture survey for everyone. Each EXCO member is rated by their fellow EXCO members and by staff, then sees their own results privately. The MD and HR see the team and culture picture without names.</p>' +
           '<p class="muted">The names and questions are final. All scores shown are made-up sample data.</p></div>' +
         '<div class="views">' +
           '<button class="view" data-v="survey"><span class="eyebrow">EXCO survey link</span><h3>The EXCO survey</h3><p>What an EXCO member sees when they open their link: their colleagues, progress, and the rating flow.</p></button>' +
-          '<button class="view" data-v="staff"><span class="eyebrow">Staff link</span><h3>The staff survey</h3><p>One link for all staff. They choose their EXCO leader, say how they report to them, and rate them.</p></button>' +
+          '<button class="view" data-v="staff"><span class="eyebrow">Staff link</span><h3>The staff survey</h3><p>One link for all staff. They rate their own EXCO leader and one more, can rate others if they wish, then go on to the culture survey.</p></button>' +
           '<button class="view" data-v="results"><span class="eyebrow">EXCO results link</span><h3>Personal results</h3><p>What each EXCO member sees privately, split by peers and staff, for an example leader.</p></button>' +
           '<button class="view" data-v="culture"><span class="eyebrow">Culture link</span><h3>The culture survey</h3><p>31 statements about the people around you, with a department question. Can follow straight on from the 360.</p></button>' +
-          '<button class="view" data-v="md"><span class="eyebrow">MD link</span><h3>Team overview</h3><p>Leadership and culture results: peers and staff compared, departments, strengths and gaps. No names against scores.</p></button>' +
+          '<button class="view" data-v="md"><span class="eyebrow">MD and HR links</span><h3>Team overview</h3><p>Leadership and culture results: peers and staff compared, departments, strengths and gaps. No names against scores.</p></button>' +
         '</div>' +
       '</div>';
     app.querySelectorAll('.view').forEach(function (b) {
@@ -1257,6 +1342,7 @@ var CONFIG = {
     else if (view === 'culture') loadCulture('demo-culture');
     else if (view === 'results') loadReport('demo-leader');
     else if (view === 'md') loadReport('demo-md');
+    else if (view === 'hr') loadReport('demo-hr');
     else if (view === 'admin') loadReport('demo-admin');
     else return demoHub();
     addBack();
@@ -1281,7 +1367,7 @@ var CONFIG = {
  * script is attached to. Built for Symmetry, facilitated by Run to the Monster.
  *
  * Two ways in:
- *   - EXCO: each leader has a private survey link and rates the other eight.
+ *   - EXCO: each leader has a private survey link and rates the other EXCO members.
  *   - Staff: one general link. A staff member picks the EXCO leader they report
  *     to, says whether they report directly or through someone else, and rates
  *     that leader. No name or email is collected.
@@ -1312,17 +1398,22 @@ var CONFIG = {
 /* the Sheet is the master copy: edit names and questions there.      */
 /* ------------------------------------------------------------------ */
 
+// [Name, Title, Area]. From Symmetry's team list (Oct 2026). Gregory Torr and
+// Lauren-Akina Weeder are not EXCO for this survey; they take part as staff.
 var SEED_LEADERS = [
-  "Kieyam Gamaldien",
-  "Melanie Sassman",
-  "Bernadette Kolbe",
-  "Khensani Baloyi",
-  "Kim Rassou",
-  "Gontse Tsatsi",
-  "Roland Gräbe",
-  "Tiaan Herselman",
-  "Suvira Bodha"
+  ["Kieyam Gamieldien", "Managing Director", ""],
+  ["Melanie Sassman", "", "Finance"],
+  ["Bernadette Kolbe", "", "Operations"],
+  ["Khensani Baloyi", "", "Marketing"],
+  ["Kim Rassou", "", "DFM"],
+  ["Gontse Tsatsi", "", "Best in Class"],
+  ["Roland Gräbe", "", "IST"],
+  ["Tiaan Herselman", "", "Business Development"],
+  ["Suvira Bodha", "", "Manager Research"],
+  ["Izak Odendaal", "", "Direct"]
 ];
+// Earlier spellings that setup() corrects in an existing Sheet.
+var RENAMED_LEADERS = { "Kieyam Gamaldien": "Kieyam Gamieldien" };
 
 // {name} is replaced with the leader's first name in the survey.
 var SEED_QUESTIONS = [
@@ -1404,7 +1495,10 @@ var SEED_CULTURE_TEXT = {
   "V4Q7": "People around me check in with colleagues about personal matters.",
   "V4Q8": "People around me create opportunities for informal social connections with the team."
 };
-var SEED_DEPARTMENTS = '[Department 1]|[Department 2]|[Department 3]|[Department 4]|[Department 5]|[Department 6]';
+// Areas from Symmetry's team list. The four largest are listed on their own;
+// everyone else picks "Another area", so no one is the only person in their option.
+var SEED_DEPARTMENTS = 'Operations|DFM|IST|Finance|Another area';
+var OLD_DEPARTMENTS = '[Department 1]|[Department 2]|[Department 3]|[Department 4]|[Department 5]|[Department 6]';
 
 // Wording that was replaced in the EXCO survey before launch. setup() updates old copies.
 var RETIRED_TEXT = { "V1Q7": "{name} feels safe to ask questions." };
@@ -1414,7 +1508,10 @@ var LEADER_HEADERS = ['LeaderID', 'Name', 'SurveyCode', 'ReportCode', 'Survey li
 var QUESTION_HEADERS = ['QuestionID', 'Value', 'Question', 'Indicator (reference only)', 'Staff wording (blank = same)', 'Culture wording (blank = not in culture survey)'];
 var CULTURE_HEADERS = ['Timestamp', 'ResponseID', 'Role', 'Department', 'QuestionID', 'Score'];
 var RESPONSE_HEADERS = ['Timestamp', 'SubmissionID', 'RaterID', 'RateeID', 'QuestionID', 'Score', 'Group'];
-var GROUP = { exco: 'EXCO', direct: 'Direct', indirect: 'Indirect' };
+var GROUP = { exco: 'EXCO', direct: 'Direct', indirect: 'Indirect', wider: 'Wider' };
+var LENS_KEYS = ['all', 'exco', 'staff', 'line', 'direct', 'indirect', 'wider'];
+var STAFF_FAMILY = { staff: 1, line: 1, direct: 1, indirect: 1, wider: 1 };
+var LINE_FAMILY = { line: 1, direct: 1, indirect: 1 };
 var NA = 'NA';             // stored score for Not able to say
 var BAND_HIGH = 4.0;       // team spread: High is 4.0 and above
 var BAND_LOW = 3.0;        // Low is below 3.0, Mid is in between
@@ -1424,8 +1521,10 @@ var LENS_LABEL = {
   all: 'Everyone',
   exco: 'EXCO peers',
   staff: 'Staff',
+  line: 'Staff in their reporting line',
   direct: 'Staff who report directly',
-  indirect: 'Staff who report through someone else'
+  indirect: 'Staff who report through someone else',
+  wider: 'Wider business'
 };
 
 /* ------------------------------------------------------------------ */
@@ -1448,6 +1547,7 @@ function onOpen() {
 // Safe to run again at any time: it adds what is missing and leaves your edits alone.
 function setup() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
+  clearCache_();
 
   var config = ensureSheet_(ss, TABS.config, ['Setting', 'Value', 'Notes']);
   if (config.getLastRow() < 2) {
@@ -1473,15 +1573,15 @@ function setup() {
   var firstName = String(leaders.getRange(2, 2).getValue()).trim();
   if (leaders.getLastRow() < 2 || firstName === '' || /^Leader \d+$/.test(firstName)) {
     clearBody_(leaders, LEADER_HEADERS.length);
-    var rows = SEED_LEADERS.map(function (name, i) { return ['L' + (i + 1), name, '', '', '', '', '[Title]', '[Area]']; });
+    var rows = SEED_LEADERS.map(function (l, i) { return ['L' + (i + 1), l[0], '', '', '', '', l[1], l[2]]; });
     leaders.getRange(2, 1, rows.length, LEADER_HEADERS.length).setValues(rows);
   }
   // Sheets set up before the staff survey: add the Title and Area columns.
   if (!String(leaders.getRange(1, 7).getValue()).trim()) {
     leaders.getRange(1, 7, 1, 2).setValues([['Title', 'Area']]).setFontWeight('bold');
   }
-  fillBlank_(leaders, 7, function () { return '[Title]'; });
-  fillBlank_(leaders, 8, function () { return '[Area]'; });
+  syncLeaders_(leaders);
+  if (String(readConfig_().DEPARTMENTS || '') === OLD_DEPARTMENTS) setConfig_('DEPARTMENTS', SEED_DEPARTMENTS);
 
   var questions = ensureSheet_(ss, TABS.questions, QUESTION_HEADERS);
   var firstQ = String(questions.getRange(2, 3).getValue()).trim();
@@ -1529,6 +1629,7 @@ function setup() {
   if (!String(responses.getRange(1, 7).getValue()).trim()) responses.getRange(1, 7).setValue('Group');
   ensureSheet_(ss, TABS.culture, CULTURE_HEADERS);
 
+  clearCache_();
   toast_('Sheet is ready with the leaders and 31 questions. Next: deploy, then run Generate links.');
 }
 
@@ -1549,19 +1650,22 @@ function generateLinks() {
     rows[i][5] = site ? site + '/?r=' + rows[i][3] : '';
   }
   sheet.getRange(2, 1, rows.length, 6).setValues(rows);
+  clearCache_();
 
   if (!cfg.MD_CODE) setConfig_('MD_CODE', newCode_());
   if (!cfg.ADMIN_CODE) setConfig_('ADMIN_CODE', newCode_());
   if (!cfg.STAFF_CODE) setConfig_('STAFF_CODE', newCode_());
   if (!cfg.CULTURE_CODE) setConfig_('CULTURE_CODE', newCode_());
+  if (!cfg.HR_CODE) setConfig_('HR_CODE', newCode_());
   var now = readConfig_();
   // Full links are written into Config so they are never lost with the pop-up.
   setConfig_('MD_LINK', site ? site + '/?r=' + now.MD_CODE : '');
   setConfig_('ADMIN_LINK', site ? site + '/?r=' + now.ADMIN_CODE : '');
   setConfig_('STAFF_LINK', site ? site + '/?g=' + now.STAFF_CODE : '');
   setConfig_('CULTURE_LINK', site ? site + '/?c=' + now.CULTURE_CODE : '');
+  setConfig_('HR_LINK', site ? site + '/?r=' + now.HR_CODE : '');
   toast_(site
-    ? 'Links ready. The staff link, MD link and your admin link are on the Config tab.'
+    ? 'Links ready. The staff, culture, MD and HR links and your admin link are on the Config tab.'
     : 'Codes created. Add SITE_URL in Config and run this again to build the full links.');
 }
 
@@ -1681,7 +1785,7 @@ function submit_(body) {
 function submitStaff_(body) {
   var ratee = findBy_(readLeaders_(), 'id', body.ratee);
   if (!ratee) return { error: 'Please choose the EXCO member you report to.' };
-  var group = body.group === GROUP.direct || body.group === GROUP.indirect ? body.group : null;
+  var group = [GROUP.direct, GROUP.indirect, GROUP.wider].indexOf(body.group) >= 0 ? body.group : null;
   if (!group) return { error: 'Please say how you report to ' + ratee.name + '.' };
 
   var answers = body.answers || {};
@@ -1874,6 +1978,8 @@ function reportData_(code, leaderId) {
     return rep;
   }
   if (cfg.MD_CODE && String(code) === String(cfg.MD_CODE)) return mdReport_(cfg);
+  // HR sees exactly what the MD sees, through its own link.
+  if (cfg.HR_CODE && String(code) === String(cfg.HR_CODE)) { var hr = mdReport_(cfg); hr.viewer = 'HR'; return hr; }
 
   var leaders = readLeaders_();
   var me = findBy_(leaders, 'reportCode', code);
@@ -1882,39 +1988,71 @@ function reportData_(code, leaderId) {
 }
 
 /*
- * Lenses. Ratings come in three groups: EXCO, Direct, Indirect. A plan decides
- * which "atoms" (smallest groups shown on their own) a leader's report uses:
- *   - EXCO peers, if at least MIN_RATERS of them rated the leader.
- *   - Direct and Indirect separately, if each has at least MIN_RATERS.
- *     Otherwise one combined Staff atom, if together they reach MIN_RATERS.
+ * Lenses. Ratings come in four groups: EXCO (peers), Direct, Indirect (staff in
+ * the leader's reporting line) and Wider (staff who work with the leader but
+ * are not in their reporting line). A plan decides which "atoms" (smallest
+ * groups shown on their own) a leader's report uses. With m = MIN_RATERS:
+ *   - EXCO peers, if at least m of them rated the leader.
+ *   - Staff, taking the first of these that fits:
+ *       Direct, Indirect and Wider each shown, if each has m or more
+ *         (Wider may also be empty);
+ *       Reporting line (Direct + Indirect) and Wider, if each has m or more
+ *         (Wider may also be empty);
+ *       all staff combined, if together they reach m;
+ *       otherwise no staff results at all.
  * Every lens is a union of atoms, and within a lens each question uses only
- * atoms with at least MIN_RATERS real ratings on it. So the difference
- * between any two lenses is always itself a group of MIN_RATERS or more.
+ * atoms with at least m real ratings on it. So the difference between a lens
+ * and any lens inside it is always a group of m or more.
  * force = true is the admin view: every group with any ratings, no minimums.
  */
 function lensPlan_(rec, min, force) {
   var n = function (g) { return Object.keys(groupOf_(rec, g).raters).length; };
-  var ex = n(GROUP.exco), di = n(GROUP.direct), ind = n(GROUP.indirect);
-  var ok = function (k) { return force ? k > 0 : k >= min; };
+  var ex = n(GROUP.exco), di = n(GROUP.direct), ind = n(GROUP.indirect), wi = n(GROUP.wider);
+  var counts = { exco: ex, direct: di, indirect: ind, wider: wi };
   var atoms = [];
-  if (ok(ex)) atoms.push({ key: 'exco', groups: [GROUP.exco], raters: ex });
-  if (force || (di >= min && ind >= min)) {
-    if (di > 0) atoms.push({ key: 'direct', groups: [GROUP.direct], raters: di });
-    if (ind > 0) atoms.push({ key: 'indirect', groups: [GROUP.indirect], raters: ind });
-  } else if (di + ind >= min) {
-    atoms.push({ key: 'staff', groups: [GROUP.direct, GROUP.indirect], raters: di + ind });
+  var add = function (key, groups, k) { atoms.push({ key: key, groups: groups, raters: k }); };
+  if (force ? ex > 0 : ex >= min) add('exco', [GROUP.exco], ex);
+  var widerOk = wi === 0 || wi >= min;
+  if (force) {
+    if (di > 0) add('direct', [GROUP.direct], di);
+    if (ind > 0) add('indirect', [GROUP.indirect], ind);
+    if (wi > 0) add('wider', [GROUP.wider], wi);
+  } else if (di >= min && ind >= min && widerOk) {
+    add('direct', [GROUP.direct], di); add('indirect', [GROUP.indirect], ind);
+    if (wi) add('wider', [GROUP.wider], wi);
+  } else if (di + ind >= min && widerOk) {
+    add('line', [GROUP.direct, GROUP.indirect], di + ind);
+    if (wi) add('wider', [GROUP.wider], wi);
+  } else if (di + ind + wi >= min) {
+    add('staff', [GROUP.direct, GROUP.indirect, GROUP.wider], di + ind + wi);
   }
-  return { atoms: atoms, counts: { exco: ex, direct: di, indirect: ind } };
+  return { atoms: atoms, counts: counts };
 }
 
 // Which atoms make up each lens, for this plan.
 function lensAtoms_(plan, key) {
-  var staffKeys = { staff: 1, direct: 1, indirect: 1 };
   return plan.atoms.filter(function (a) {
     if (key === 'all') return true;
-    if (key === 'staff') return !!staffKeys[a.key];
+    if (key === 'staff') return !!STAFF_FAMILY[a.key];
+    if (key === 'line') return !!LINE_FAMILY[a.key];
     return a.key === key;
   });
+}
+
+// The lenses worth showing: no two with the same atoms, and a single group
+// shown under its own name rather than as "Staff" or "Reporting line".
+function visibleLenses_(plan) {
+  var seen = {}, out = [];
+  LENS_KEYS.forEach(function (k) {
+    var atoms = lensAtoms_(plan, k);
+    if (!atoms.length) return;
+    if ((k === 'staff' || k === 'line') && atoms.length === 1 && atoms[0].key !== k) return;
+    var sig = atoms.map(function (a) { return a.key; }).join();
+    if (seen[sig]) return;
+    seen[sig] = true;
+    out.push({ key: k, atoms: atoms });
+  });
+  return out;
 }
 
 function computeLens_(rec, atoms, questions, min, force) {
@@ -1948,7 +2086,7 @@ function computeLens_(rec, atoms, questions, min, force) {
 // lens, using the normal (non-admin) rules, and only when MIN_LEADERS or more
 // leaders contribute. Every leader counts equally however many people rated them.
 function teamAverages_(leaders, questions, data, min) {
-  var keys = ['all', 'exco', 'staff', 'direct', 'indirect'];
+  var keys = LENS_KEYS;
   var team = {}, contributors = {};
   keys.forEach(function (k) { team[k] = {}; contributors[k] = []; });
   var perLeader = {};
@@ -1991,17 +2129,10 @@ function leaderReport_(cfg, leaders, me, force) {
   if (!plan.atoms.length) { base.insufficient = true; return base; }
 
   var team = teamAverages_(leaders, questions, data, min);
-  var keys = ['all', 'exco', 'staff', 'direct', 'indirect'];
-  var allKey = lensAtoms_(plan, 'all').map(function (a) { return a.key; }).join();
   base.lenses = [];
-  keys.forEach(function (k) {
-    var atoms = lensAtoms_(plan, k);
-    if (!atoms.length) return;
-    // A lens identical to Everyone adds nothing, except Everyone itself.
-    if (k !== 'all' && atoms.map(function (a) { return a.key; }).join() === allKey) return;
-    // Staff combined is only worth a tab when it differs from a single staff atom.
-    if (k === 'staff' && atoms.length === 1 && atoms[0].key !== 'staff') return;
-    var staffOnly = k === 'staff' || k === 'direct' || k === 'indirect';
+  visibleLenses_(plan).forEach(function (lv) {
+    var k = lv.key, atoms = lv.atoms;
+    var staffOnly = !!STAFF_FAMILY[k];
     var stats = computeLens_(rec, atoms, questions, min, force);
     var qOut = questions.map(function (q) {
       var s = stats[q.id];
@@ -2056,7 +2187,8 @@ function adminReport_(cfg) {
       given: data.byRater[l.id] ? Object.keys(data.byRater[l.id]).length : 0,
       raters: plan.counts.exco,
       counts: plan.counts,
-      merged: !normal.atoms.some(function (a) { return a.key === 'direct'; }) && normal.atoms.some(function (a) { return a.key === 'staff'; }),
+      merged: normal.atoms.some(function (a) { return a.key === 'staff' || a.key === 'line'; }),
+      staffHidden: (plan.counts.direct + plan.counts.indirect + plan.counts.wider) > 0 && !normal.atoms.some(function (a) { return STAFF_FAMILY[a.key]; }),
       shown: normal.atoms.length > 0,
       overall: round2_(mean_(pluck_(qAvg, 'avg'))),
       exco: overallFor(rec, plan, 'exco'),
@@ -2092,8 +2224,9 @@ function mdReport_(cfg) {
   // Staff response counts per leader. Counts only, never scores.
   var staffCompletion = leaders.map(function (l) {
     var rec = data.byRatee[l.id] || emptyRec_();
-    var d = Object.keys(groupOf_(rec, GROUP.direct).raters).length, i = Object.keys(groupOf_(rec, GROUP.indirect).raters).length;
-    return { name: l.name, direct: d, indirect: i, total: d + i };
+    var c = function (g) { return Object.keys(groupOf_(rec, g).raters).length; };
+    var d = c(GROUP.direct), i = c(GROUP.indirect), w = c(GROUP.wider);
+    return { name: l.name, direct: d, indirect: i, wider: w, total: d + i + w };
   });
 
   var out = {
@@ -2214,7 +2347,26 @@ function pluck_(list, key) { return list.map(function (x) { return x[key]; }); }
 /* Sheet access                                                        */
 /* ------------------------------------------------------------------ */
 
-function readConfig_() {
+/* Small cache so pages load faster. Cleared whenever the Sheet changes. */
+function cache_() {
+  try { return typeof CacheService !== 'undefined' ? CacheService.getScriptCache() : null; } catch (e) { return null; }
+}
+function cached_(key, fn) {
+  var c = cache_();
+  if (c) { try { var hit = c.get(key); if (hit) return JSON.parse(hit); } catch (e) { /* fall through */ } }
+  var val = fn();
+  if (c) { try { c.put(key, JSON.stringify(val), 600); } catch (e) { /* too big or unavailable */ } }
+  return val;
+}
+function clearCache_() {
+  var c = cache_();
+  if (c) { try { c.removeAll(['cfg', 'leaders', 'questions']); } catch (e) { /* ignore */ } }
+}
+// Any hand edit in the Sheet clears the cache, so changes show straight away.
+function onEdit() { clearCache_(); }
+
+function readConfig_() { return cached_('cfg', readConfigFresh_); }
+function readConfigFresh_() {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TABS.config);
   var cfg = {};
   if (!sheet || sheet.getLastRow() < 2) return cfg;
@@ -2229,18 +2381,21 @@ function setConfig_(key, value) {
   var last = sheet.getLastRow();
   var keys = last >= 2 ? sheet.getRange(2, 1, last - 1, 1).getValues() : [];
   for (var i = 0; i < keys.length; i++) {
-    if (String(keys[i][0]).trim() === key) { sheet.getRange(i + 2, 2).setValue(value); return; }
+    if (String(keys[i][0]).trim() === key) { sheet.getRange(i + 2, 2).setValue(value); clearCache_(); return; }
   }
   sheet.appendRow([key, value, '']);
+  clearCache_();
 }
 
 function ensureConfig_(key, value, note) {
   var cfg = readConfig_();
   if (cfg.hasOwnProperty(key)) return;
   SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TABS.config).appendRow([key, value, note || '']);
+  clearCache_();
 }
 
-function readLeaders_() {
+function readLeaders_() { return cached_('leaders', readLeadersFresh_); }
+function readLeadersFresh_() {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TABS.leaders);
   if (!sheet || sheet.getLastRow() < 2) return [];
   return sheet.getRange(2, 1, sheet.getLastRow() - 1, 8).getValues()
@@ -2253,7 +2408,8 @@ function readLeaders_() {
     });
 }
 
-function readQuestions_() {
+function readQuestions_() { return cached_('questions', readQuestionsFresh_); }
+function readQuestionsFresh_() {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TABS.questions);
   if (!sheet || sheet.getLastRow() < 2) return [];
   return sheet.getRange(2, 1, sheet.getLastRow() - 1, 6).getValues()
@@ -2279,9 +2435,14 @@ function readResponses_() {
     });
 }
 
+// Reads only the rater and ratee columns, to keep the EXCO survey quick.
 function completedFor_(raterId) {
   var done = {};
-  readResponses_().forEach(function (r) { if (r.rater === raterId) done[r.ratee] = true; });
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TABS.responses);
+  if (!sheet || sheet.getLastRow() < 2) return done;
+  sheet.getRange(2, 3, sheet.getLastRow() - 1, 2).getValues().forEach(function (r) {
+    if (String(r[0]) === raterId) done[String(r[1])] = true;
+  });
   return done;
 }
 
@@ -2322,6 +2483,31 @@ function ensureSheet_(ss, name, headers) {
 function clearBody_(sheet, cols) {
   var last = sheet.getLastRow();
   if (last >= 2) sheet.getRange(2, 1, last - 1, Math.max(cols, sheet.getLastColumn())).clearContent();
+}
+
+// Brings an existing Leaders tab in line with SEED_LEADERS without touching
+// real edits: matches people by first name, corrects known misspellings,
+// replaces [Title] / [Area] placeholders, and adds anyone missing (new ID).
+function syncLeaders_(sheet) {
+  var key = function (n) { return String(n).trim().split(/\s+/)[0].toLowerCase(); };
+  var last = sheet.getLastRow();
+  var rows = last >= 2 ? sheet.getRange(2, 1, last - 1, 8).getValues() : [];
+  var maxId = 0;
+  rows.forEach(function (r) { var m = /^L(\d+)$/.exec(String(r[0]).trim()); if (m) maxId = Math.max(maxId, +m[1]); });
+  SEED_LEADERS.forEach(function (seed) {
+    var idx = -1;
+    for (var i = 0; i < rows.length; i++) if (rows[i][0] && key(rows[i][1]) === key(seed[0])) { idx = i; break; }
+    if (idx < 0) {
+      maxId++;
+      sheet.getRange(sheet.getLastRow() + 1, 1, 1, 8).setValues([['L' + maxId, seed[0], '', '', '', '', seed[1], seed[2]]]);
+      return;
+    }
+    var row = idx + 2, r = rows[idx];
+    if (RENAMED_LEADERS[String(r[1]).trim()]) sheet.getRange(row, 2).setValue(RENAMED_LEADERS[String(r[1]).trim()]);
+    var t = String(r[6]).trim(), a = String(r[7]).trim();
+    if (!t || t === '[Title]') sheet.getRange(row, 7).setValue(seed[1]);
+    if (!a || a === '[Area]') sheet.getRange(row, 8).setValue(seed[2]);
+  });
 }
 
 // Fill empty cells in one column, for rows that have an ID.
@@ -2397,8 +2583,8 @@ function toast_(msg) {
       b.generateLinks();
       var leaders = b.readLeaders_(), qs = b.readQuestions_(), cfg = b.readConfig_();
       var seed = 7; function rnd() { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }
-      var leanL = [0.5, 0.1, 0.35, -0.25, 0.2, 0.6, -0.1, 0.3, 0.15];
-      var staffShift = [-0.3, -0.55, 0.1, 0.15, -0.2, -0.05, 0.25, -0.6, 0.05];
+      var leanL = [0.5, 0.1, 0.35, -0.25, 0.2, 0.6, -0.1, 0.3, 0.15, 0.05];
+      var staffShift = [-0.3, -0.55, -0.35, 0.15, -0.2, -0.05, 0.25, -0.6, 0.05, 0.1];
       var leanQ = qs.map(function (q, i) { return [0.4, -0.3, -0.6, 0.1, 0.2, 0.5, -0.4, 0.3, 0.0, -0.2][i % 10] + [0.2, -0.1, 0.25, -0.15][Math.floor(i / 10)]; });
       var hard = { V2Q7: 1, V3Q1: 1, V3Q4: 1, V4Q4: 1, V4Q7: 1 };   // often not visible to staff
       function score(base, t, qi, wide) { return Math.max(1, Math.min(5, Math.round(base + leanL[t] + leanQ[qi] + (rnd() - 0.5) * (wide ? 3 : 1.6)))); }
@@ -2407,23 +2593,23 @@ function toast_(msg) {
         var ans = {}; qs.forEach(function (q, qi) { ans[q.id] = score(3.4, ti, qi, qi % 4 === 1); });
         b.post({ action: 'submit', code: r.surveyCode, ratee: t.id, answers: ans });
       }); });
-      // [direct, through someone else] per leader. Kieyam and Roland show the small-group rules.
-      var staff = [[2, 3], [4, 5], [3, 6], [4, 3], [3, 4], [3, 3], [2, 1], [3, 3], [3, 4]];
+      // [direct, through someone else, wider business] per leader. Kieyam and Roland show the small-group rules.
+      // Roughly Symmetry's real team sizes (Oct 2026), at about 80% response.
+      var staff = [[1, 0, 7], [3, 2, 6], [6, 19, 5], [1, 0, 6], [5, 2, 6], [1, 0, 5], [3, 2, 6], [2, 0, 6], [2, 2, 5], [1, 0, 6]];
       leaders.forEach(function (t, ti) {
-        ['Direct', 'Indirect'].forEach(function (g, gi) {
+        ['Direct', 'Indirect', 'Wider'].forEach(function (g, gi) {
           for (var k = 0; k < staff[ti][gi]; k++) {
             var ans = {};
             qs.forEach(function (q, qi) {
-              var pna = hard[q.id] ? (g === 'Direct' ? 0.15 : 0.5) : (g === 'Direct' ? 0.02 : 0.1);
-              ans[q.id] = rnd() < pna ? 'NA' : score(3.3 + staffShift[ti] + (g === 'Direct' ? 0.15 : -0.1), ti, qi, qi % 3 === 0);
+              var pna = hard[q.id] ? [0.15, 0.5, 0.55][gi] : [0.02, 0.1, 0.15][gi];
+              ans[q.id] = rnd() < pna ? 'NA' : score(3.3 + staffShift[ti] + [0.15, -0.1, 0.05][gi], ti, qi, qi % 3 === 0);
             });
             b.post({ action: 'submit', code: cfg.STAFF_CODE, ratee: t.id, group: g, answers: ans });
           }
         });
       });
       // Culture survey: placeholder departments, one too small to show on its own.
-      b.setConfig_('DEPARTMENTS', 'Sales|Client Service|Marketing|Operations|Finance|Technology');
-      var cdep = [['Sales', 11, 0.2], ['Client Service', 9, 0.35], ['Marketing', 6, -0.1], ['Operations', 10, -0.35], ['Finance', 3, 0.1], ['Technology', 8, -0.2]];
+      var cdep = [['Operations', 22, -0.25], ['DFM', 7, 0.3], ['IST', 5, -0.1], ['Finance', 4, 0.15], ['Another area', 8, 0.2]];
       var culLean = qs.map(function (q, i) { return [0.3, -0.2, 0.1, -0.4, 0.25, -0.1, 0.2, 0, -0.3, 0.15][i % 10]; });
       cdep.forEach(function (dd, di) {
         var vl = [[0.3, -0.2, 0.1, -0.3], [-0.2, 0.3, -0.3, 0.2], [0.1, 0.1, -0.4, 0.4]][di % 3];
@@ -2446,10 +2632,9 @@ function toast_(msg) {
     function practice() {
       if (B) return B;
       var b = backend();
-      b.sheets.Leaders.appendRow(['L10', 'Preview', '', '', '', '', '', '']);
+      b.sheets.Leaders.appendRow(['LP', 'Preview', '', '', '', '', '', '']);
       b.generateLinks();
-      b.setConfig_('DEPARTMENTS', 'Sales|Client Service|Marketing|Operations|Finance|Technology');
-      var me = b.readLeaders_().filter(function (l) { return l.id === 'L10'; })[0];
+      var me = b.readLeaders_().filter(function (l) { return l.id === 'LP'; })[0];
       B = { b: b, cfg: b.readConfig_(), code: me.surveyCode };
       return B;
     }
@@ -2460,7 +2645,7 @@ function toast_(msg) {
         var p = practice();
         if (code === 'demo-staff') {
           var s = p.b.get({ action: 'survey', code: p.cfg.STAFF_CODE });
-          s.leaders = s.leaders.filter(function (l) { return l.id !== 'L10'; });
+          s.leaders = s.leaders.filter(function (l) { return l.id !== 'LP'; });
           s.preview = true;
           if (s.cultureCode) s.cultureCode = 'demo-culture';
           return wait(s);
@@ -2486,7 +2671,8 @@ function toast_(msg) {
         var a = sample();
         if (code === 'demo-admin') return wait(a.b.get({ action: 'report', code: a.cfg.ADMIN_CODE, leader: leader }));
         if (code === 'demo-md') return wait(a.b.get({ action: 'report', code: a.cfg.MD_CODE }));
-        var r = a.b.get({ action: 'report', code: a.leaders[1].reportCode });
+        if (code === 'demo-hr') return wait(a.b.get({ action: 'report', code: a.cfg.HR_CODE }));
+        var r = a.b.get({ action: 'report', code: a.leaders[2].reportCode });
         r.name = 'Example leader';
         return wait(r);
       }
