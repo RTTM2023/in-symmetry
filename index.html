@@ -30,12 +30,14 @@
   --f-display:"Jost","Futura","Trebuchet MS",sans-serif;
   --f-body:"Inter","Helvetica Neue",Arial,sans-serif;
   --r:2px;
+  --pill:999px; --card:26px;
+  --cur-bg:#B85A00; --cur-ink:#FFFFFF;
   --logo-dark:block; --logo-light:none;
   --h-ink-dark:#FFFFFF; --h-ink-mid:#1B1B1C; --h-ink-light:#1B1B1C; --h-ink-dark5:#1B1B1C;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --paper:#1B1B1C; --mist:#242425; --line:#38383A; --ink:#F1EFEC; --charcoal:#E6E4E1; --muted:#A9A7A4;
-  --orange:#FF9A2E; --orange-ink:#FFB363; --btn:#FF9A2E; --btn-ink:#1B1B1C; --sel:#FF9A2E; --sel-ink:#1B1B1C;
+  --orange:#FF9A2E; --orange-ink:#FFB363; --btn:#FF9A2E; --btn-ink:#1B1B1C; --sel:#FF9A2E; --sel-ink:#1B1B1C; --cur-bg:#FFB363; --cur-ink:#1B1B1C;
   --focus:#FF9A2E; --tick:#F1EFEC;
   --s1:#C9D6E2; --s2:#6F8499; --s3:#4A4846; --s4:#B3640E; --s5:#FF9A2E; --good:#6CC08E; --warn:#FFB363;
   --logo-dark:none; --logo-light:block; color-scheme:dark;
@@ -43,7 +45,7 @@
 }}
 :root[data-theme="dark"]{
   --paper:#1B1B1C; --mist:#242425; --line:#38383A; --ink:#F1EFEC; --charcoal:#E6E4E1; --muted:#A9A7A4;
-  --orange:#FF9A2E; --orange-ink:#FFB363; --btn:#FF9A2E; --btn-ink:#1B1B1C; --sel:#FF9A2E; --sel-ink:#1B1B1C;
+  --orange:#FF9A2E; --orange-ink:#FFB363; --btn:#FF9A2E; --btn-ink:#1B1B1C; --sel:#FF9A2E; --sel-ink:#1B1B1C; --cur-bg:#FFB363; --cur-ink:#1B1B1C;
   --focus:#FF9A2E; --tick:#F1EFEC;
   --s1:#C9D6E2; --s2:#6F8499; --s3:#4A4846; --s4:#B3640E; --s5:#FF9A2E; --good:#6CC08E; --warn:#FFB363;
   --logo-dark:none; --logo-light:block; color-scheme:dark;
@@ -90,8 +92,24 @@ main{padding-block:36px 64px}
 .section{display:flex;flex-direction:column;gap:16px}
 .section-head{display:flex;align-items:center;gap:10px}
 .lead{font-size:18px;max-width:62ch}
+.lead.soft{font-size:16px;color:var(--muted)}
+.confirm p.soft{font-size:15px;color:var(--muted)}
+.stack.dash{gap:56px}
+.stack.dash > .section + .section{padding-top:4px}
+.scalenote{font-size:13px;color:var(--muted);max-width:70ch}
+.axis .ends{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:2px}
+.journey{display:flex;flex-wrap:wrap;align-items:center;gap:6px 4px;font-size:13px;margin-bottom:24px}
+.journey .js{display:inline-flex;align-items:center;gap:8px;padding:6px 14px 6px 6px;border-radius:var(--pill);border:1px solid var(--line);color:var(--muted);background:var(--paper)}
+.journey .js i{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--mist);font-style:normal;font-weight:600;font-size:12px;color:var(--muted)}
+.journey .js.done{color:var(--ink)}
+.journey .js.done i{background:var(--good);color:#fff}
+.journey .js.cur{background:var(--cur-bg);border-color:var(--cur-bg);color:var(--cur-ink);font-weight:600}
+.journey .js.cur i{background:rgba(255,255,255,.25);color:var(--cur-ink)}
+.journey .js.opt{border-style:dashed}
+.journey .sep{width:14px;height:1px;background:var(--line)}
+.hubhead{display:flex;flex-direction:column;gap:12px}
 .note{background:var(--mist);border-left:3px solid var(--orange);padding:14px 16px;border-radius:var(--r);max-width:70ch}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:var(--r);padding:12px 20px;font-weight:600;cursor:pointer;background:var(--btn);color:var(--btn-ink);text-decoration:none}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:var(--pill);padding:12px 24px;font-weight:600;cursor:pointer;background:var(--btn);color:var(--btn-ink);text-decoration:none}
 .btn:hover{filter:brightness(1.12)}
 .btn[disabled]{opacity:.45;cursor:not-allowed;filter:none}
 .btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
@@ -106,7 +124,7 @@ main{padding-block:36px 64px}
 
 /* Survey: colleague list */
 .people{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
-.person{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px;border:1px solid var(--line);border-radius:var(--r);background:var(--paper);text-align:left;cursor:pointer;width:100%}
+.person{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px;border:1px solid var(--line);border-radius:var(--card);background:var(--paper);text-align:left;cursor:pointer;width:100%}
 .person:hover:not([disabled]){border-color:var(--charcoal)}
 .person[disabled]{cursor:default;background:var(--mist)}
 .person .pname{font-weight:600}
@@ -122,22 +140,22 @@ main{padding-block:36px 64px}
 .track{height:4px;background:var(--line);width:100%}
 .track > i{display:block;height:100%;background:var(--orange);transition:width .25s}
 .steps{display:flex;gap:6px;flex-wrap:wrap}
-.step{font-size:12px;padding:4px 10px;border:1px solid var(--line);border-radius:var(--r);color:var(--muted);background:transparent;cursor:pointer}
-.step.cur{border-color:var(--charcoal);color:var(--ink);font-weight:600}
+.step{font-size:12px;padding:5px 12px;border:1px solid var(--line);border-radius:var(--pill);color:var(--muted);background:transparent;cursor:pointer}
+.step.cur{background:var(--cur-bg);border-color:var(--cur-bg);color:var(--cur-ink);font-weight:600}
 .step.full{color:var(--ink)}
 .q{border:0;margin:0;padding:20px 0;border-bottom:1px solid var(--line);display:grid;grid-template-columns:1fr;gap:14px;min-width:0}
 .q legend{padding:0;display:flex;gap:12px;font-size:17px;line-height:1.45;float:left;width:100%}
 .q legend .n{font-family:var(--f-display);color:var(--muted);min-width:22px}
 .q.missing legend{color:var(--warn)}
 .scale{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;clear:both}
-.scale label{position:relative;display:flex;align-items:center;justify-content:center;text-align:center;min-height:48px;padding:6px 4px;border:1px solid var(--line);border-radius:var(--r);font-size:13px;line-height:1.25;cursor:pointer;background:var(--paper)}
+.scale label{position:relative;display:flex;align-items:center;justify-content:center;text-align:center;min-height:48px;padding:6px 8px;border:1px solid var(--line);border-radius:var(--pill);font-size:13px;line-height:1.25;cursor:pointer;background:var(--paper)}
 .scale label:hover{border-color:var(--charcoal)}
 .scale input{position:absolute;opacity:0;pointer-events:none}
 .scale input:checked + span{font-weight:600}
 .scale label:has(input:checked){background:var(--sel);border-color:var(--sel);color:var(--sel-ink)}
 .scale label:has(input:focus-visible){outline:3px solid var(--focus);outline-offset:2px}
 .navrow{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-top:24px}
-.confirm{border:1px solid var(--line);border-radius:var(--r);padding:20px;display:flex;flex-direction:column;gap:14px;background:var(--mist)}
+.confirm{border:1px solid var(--line);border-radius:var(--card);padding:22px 24px;display:flex;flex-direction:column;gap:14px;background:var(--mist)}
 
 /* Dashboards */
 .hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:28px;align-items:end}
@@ -206,14 +224,14 @@ main{padding-block:36px 64px}
 .atable .teamrow td{background:var(--mist);font-weight:600}
 .atable td:first-child,.atable th:first-child{padding-left:8px}
 .flag{display:inline-block;font-size:11px;padding:1px 6px;border:1px solid var(--warn);color:var(--warn);border-radius:var(--r);margin-left:4px;white-space:nowrap}
-.chip{font-size:13px;padding:4px 10px;border:1px solid var(--line);border-radius:var(--r);background:var(--mist)}
+.chip{font-size:13px;padding:4px 12px;border:1px solid var(--line);border-radius:var(--pill);background:var(--mist)}
 .btn.sm{padding:6px 12px;font-size:13px}
 .tip{position:fixed;z-index:50;pointer-events:none;background:var(--ink);color:var(--paper);font-size:12px;padding:6px 9px;border-radius:var(--r);max-width:240px;line-height:1.4}
 
 /* Demo hub */
 .demo-tag{display:inline-block;font-size:12px;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border:1px solid var(--orange);color:var(--orange-ink);border-radius:var(--r)}
 .views{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-.view{border:1px solid var(--line);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:10px;text-align:left;background:var(--paper);cursor:pointer}
+.view{border:1px solid var(--line);border-radius:var(--card);padding:20px 22px;display:flex;flex-direction:column;gap:10px;text-align:left;background:var(--paper);cursor:pointer}
 .view:hover{border-color:var(--charcoal)}
 .view h3{font-size:18px}
 .view p{font-size:14px;color:var(--muted)}
@@ -230,7 +248,7 @@ main{padding-block:36px 64px}
 .person[aria-pressed="true"] .tickmark{background:var(--sel);border-color:var(--sel)}
 .person[aria-pressed="true"] .tickmark::after{content:"";position:absolute;left:6px;top:2px;width:5px;height:10px;border:solid var(--sel-ink);border-width:0 2px 2px 0;transform:rotate(45deg)}
 .rels{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-.rel{display:flex;gap:12px;align-items:flex-start;padding:16px;border:1px solid var(--line);border-radius:var(--r);cursor:pointer;background:var(--paper)}
+.rel{display:flex;gap:12px;align-items:flex-start;padding:14px 20px;border:1px solid var(--line);border-radius:var(--card);cursor:pointer;background:var(--paper)}
 .rels3{grid-template-columns:repeat(3,minmax(0,1fr))}
 .rel:hover{border-color:var(--charcoal)}
 .rel input{accent-color:var(--orange);width:18px;height:18px;margin:2px 0 0;flex:none}
@@ -245,9 +263,9 @@ main{padding-block:36px 64px}
 
 /* Lenses and group comparison */
 .lenses{display:flex;flex-wrap:wrap;gap:6px}
-.lens{font-size:13px;padding:6px 12px;border:1px solid var(--line);border-radius:var(--r);background:transparent;cursor:pointer;color:var(--ink)}
+.lens{font-size:13px;padding:6px 14px;border:1px solid var(--line);border-radius:var(--pill);background:transparent;cursor:pointer;color:var(--ink)}
 .lens:hover{border-color:var(--charcoal)}
-.lens[aria-selected="true"]{background:var(--btn);color:var(--btn-ink);border-color:var(--btn)}
+.lens[aria-selected="true"]{background:var(--cur-bg);color:var(--cur-ink);border-color:var(--cur-bg)}
 .lens .num{opacity:.75;margin-left:5px}
 .plot.dots{height:34px}
 .dot{position:absolute;width:12px;height:12px;margin-left:-8px;border-radius:50%;border:2px solid var(--paper)}
@@ -463,7 +481,23 @@ var CONFIG = {
     var f = name ? firstName(name) : 'them';
     if (g === 'Direct') return name ? 'You report directly to ' + f : 'You report directly';
     if (g === 'Indirect') return name ? 'You report to ' + f + ' through someone else' : 'You report through someone else';
-    return name ? 'You work with ' + f + ', outside their reporting line' : 'Outside their reporting line';
+    return name ? 'You work with ' + f + ' from time to time' : 'You work together';
+  }
+
+  // The staff journey: EXCO member 1, EXCO member 2, optional extras, culture survey.
+  function journey() {
+    var staffMode = S && S.mode === 'staff', cult = S && S.mode === 'culture' && S.data && S.data.role === 'Staff';
+    if (!staffMode && !cult) return '';
+    var n = cult ? 2 : (S.rated || []).length, rating = !!S.cur && staffMode;
+    var extras = Math.max(0, n - 2);
+    var hasCulture = cult || !!(S.data && S.data.cultureCode);
+    var step = function (cls, num, label) { return '<span class="js ' + cls + '"><i>' + num + '</i>' + label + '</span>'; };
+    var st = function (idx) { return n > idx ? 'done' : (n === idx && !cult ? 'cur' : ''); };
+    var html = step(st(0), n > 0 ? '✓' : '1', 'EXCO member 1') + '<span class="sep"></span>' +
+      step(st(1), n > 1 ? '✓' : '2', 'EXCO member 2') + '<span class="sep"></span>' +
+      step('opt' + (n >= 2 && (rating || S.picking) ? ' cur' : (extras ? ' done' : '')), '+', 'Extra ratings, optional' + (extras ? ' (' + extras + ')' : ''));
+    if (hasCulture) html += '<span class="sep"></span>' + step(cult ? 'cur' : '', '3', 'Culture survey');
+    return '<nav class="journey" aria-label="Your progress">' + html + '</nav>';
   }
 
   /* ---------- staff survey (Option 1): one shared link, no names ----------
@@ -510,6 +544,7 @@ var CONFIG = {
   function staffHome(note, keepScroll) {
     ratebarSlot.innerHTML = '';
     S.cur = null;
+    S.picking = (S.rated || []).length >= 2;
     var d = S.data, sel = S.sel, L = sel.leader ? staffLeader(sel.leader) : null, first = L ? firstName(L.name) : '';
     var stage = S.rated.length, done = ratedIds();
     var people = d.leaders.map(function (l) {
@@ -524,7 +559,7 @@ var CONFIG = {
     };
     var rels = stage === 0
       ? rel('Direct', 'Directly.', first + ' is my line manager.') + rel('Indirect', 'Through someone else.', 'I report to a manager who works under ' + first + '.')
-      : rel('Wider', 'Not in their reporting line.', 'I work with ' + first + ', but I don\'t report to them.') + rel('Direct', 'Directly.', first + ' is my line manager.') + rel('Indirect', 'Through someone else.', 'I report to a manager who works under ' + first + '.');
+      : rel('Direct', 'Directly.', first + ' is my line manager.') + rel('Indirect', 'Through someone else.', 'I report to a manager who works under ' + first + '.') + rel('Wider', 'We work together.', 'I\'m not in ' + first + '\'s team, but I work with them from time to time.');
     var pips = '<div class="pips" aria-hidden="true"><i class="pip' + (stage >= 1 ? ' on' : '') + '"></i><i class="pip' + (stage >= 2 ? ' on' : '') + '"></i></div>';
     var heading = stage === 0 ? (d.preview ? 'Try the staff survey' : 'Rate your EXCO leaders') : (stage === 1 ? 'Now rate a second EXCO member' : 'Rate another EXCO member');
     var lead = stage === 0
@@ -534,14 +569,14 @@ var CONFIG = {
     var q1 = stage === 0 ? 'Which EXCO member do you report to?' : 'Which EXCO member would you like to rate?';
     var q1sub = stage === 0 ? 'Pick the EXCO member at the top of your reporting line. They might be your own manager, or your manager\'s manager.' : '';
     app.innerHTML =
-      '<div class="stack">' +
+      '<div class="stack">' + journey() +
         '<div class="section">' +
           '<div class="row" style="justify-content:space-between"><span class="eyebrow">' + esc(d.subtitle || 'Leadership Values 360') + '</span>' +
-            (stage < 2 ? '<span class="row" style="gap:8px">' + pips + '<span class="num muted" style="font-size:14px">' + stage + ' of 2 done</span></span>' : '') + '</div>' +
+            '</div>' +
           '<h1>' + heading + '</h1>' +
           (d.open ? '' : '<div class="note">The survey is now closed. Thank you to everyone who took part.</div>') +
           (note ? '<div class="note">' + esc(note) + '</div>' : '') +
-          '<p class="lead">' + lead + '</p>' +
+          '<p class="lead soft">' + lead + '</p>' +
         '</div>' +
         '<div class="section">' +
           '<h2>' + q1 + '</h2>' +
@@ -604,20 +639,21 @@ var CONFIG = {
   function staffChoice(keepScroll) {
     ratebarSlot.innerHTML = '';
     S.cur = null;
+    S.picking = false;
     var d = S.data, names = S.rated.map(function (r) { return r.name; });
     var left = d.leaders.filter(function (l) { return !ratedIds()[l.id]; }).length;
     var list = names.length > 1 ? names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1] : names[0];
     app.innerHTML =
-      '<div class="stack">' +
+      '<div class="stack">' + journey() +
         '<div class="section"><span class="eyebrow">' + esc(d.subtitle || 'Leadership Values 360') + '</span>' +
           '<h1>Thank you</h1><p class="lead">Your ratings for ' + esc(list) + ' are in.</p></div>' +
         (d.cultureCode
           ? '<div class="confirm"><h2>Next: the culture survey</h2>' +
-              '<p>31 short statements about the people you work with day to day. About eight minutes, and kept completely separate from the ratings you just gave.</p>' +
+              '<p class="soft">31 short statements about the people you work with day to day. About eight minutes, and kept completely separate from the ratings you just gave.</p>' +
               '<div class="row"><button class="btn" id="tocult">Continue to the culture survey</button></div></div>'
           : '<div class="confirm"><p>That\'s everything you need to do.</p><div class="row"><button class="btn" id="finish">Finish</button></div></div>') +
         (left ? '<div class="section"><h2>Want to rate another EXCO member?</h2>' +
-          '<p class="muted" style="max-width:66ch">Optional. If you work closely with another EXCO member, your view helps them too.</p>' +
+          '<p class="muted" style="max-width:66ch;font-size:15px">Optional. If you work closely with another EXCO member, your view helps them too.</p>' +
           '<div class="row"><button class="btn ghost" id="another">Rate another EXCO member</button></div></div>' : '') +
         (d.preview ? '<div class="row"><button class="btn ghost" data-go="results">Example personal results</button><button class="btn ghost" id="again">Try the staff survey again</button></div>' : '') +
       '</div>';
@@ -647,10 +683,7 @@ var CONFIG = {
       '<div class="stack"><div class="section"><span class="eyebrow">' + esc(S.data.subtitle || 'Leadership Values 360') + '</span>' +
         '<h1>You\'ve already taken part</h1><p class="lead">Ratings have already been sent from this device. Thank you.</p>' +
         (S.data.cultureCode ? '<p class="muted">Haven\'t done the culture survey yet? <button class="backlink" id="tocult">Go to the culture survey</button></p>' : '') +
-        '<p class="muted">Someone else using this device? <button class="backlink" id="fresh">Start a new response</button></p></div></div>';
-    document.getElementById('fresh').addEventListener('click', function () {
-      store(staffKey() + ':done', null); store(staffKey(), null); S.rated = []; S.sel = {}; S.answers = {}; staffHome();
-    });
+        '</div></div>';
     var tc = document.getElementById('tocult');
     if (tc) tc.addEventListener('click', function () { loadCulture(S.data.cultureCode); });
     top();
@@ -696,7 +729,7 @@ var CONFIG = {
       return '<fieldset class="q' + (missing ? ' missing' : '') + '" id="f_' + q.id + '"><legend><span class="n num">' + (i + 1) + '</span><span>' + esc(fill(q.text, S.cur.c.name)) + '</span></legend><div class="scale' + (staff ? ' with-na' : '') + '">' + opts + '</div></fieldset>';
     }).join('');
     app.innerHTML =
-      '<div class="stack">' +
+      '<div class="stack">' + journey() +
         '<div class="section">' +
           '<span class="eyebrow">Value ' + (S.cur.step + 1) + ' of ' + S.data.values.length + '</span>' +
           '<h1>' + esc(v.name) + '</h1>' +
@@ -743,10 +776,10 @@ var CONFIG = {
     var name = S.cur.c.name, staff = S.mode === 'staff';
     var nas = 0; Object.keys(S.cur.answers).forEach(function (k) { if (S.cur.answers[k] === 'NA') nas++; });
     app.innerHTML =
-      '<div class="stack">' +
+      '<div class="stack">' + journey() +
         '<div class="section"><span class="eyebrow">Last step</span><h1>' + (S.mode === 'culture' ? 'Submit your culture survey' : 'Submit your ratings for ' + esc(name)) + '</h1>' +
           (S.mode === 'culture' && S.dept ? '<p class="muted">Department: ' + esc(S.dept) + '. <button class="backlink" id="change">Change</button></p>' : '') +
-          (staff ? '<p class="muted">' + esc(groupPhrase(S.cur.group, name)) + '. <button class="backlink" id="change">Change</button></p>' : '') + '</div>' +
+          '</div>' +
         (incomplete.length
           ? '<div class="note">Some questions still need an answer in: ' + esc(incomplete.join(', ')) + '. Use the tabs above to finish them.</div>'
           : (staff && nas === totalQ() ? '<div class="note">You chose ' + esc(S.data.na) + ' for every question. Please rate at least one behaviour you have seen before you submit.</div>' :
@@ -821,11 +854,11 @@ var CONFIG = {
         '<span class="pinfo"><span class="pname">' + esc(n) + '</span></span><span class="tickmark" aria-hidden="true"></span></button>';
     }).join('');
     app.innerHTML =
-      '<div class="stack">' +
+      '<div class="stack">' + journey() +
         '<div class="section"><span class="eyebrow">Culture survey</span>' +
           '<h1>' + (d.preview ? 'Try the culture survey' : 'How the values are lived at Symmetry') + '</h1>' +
           (d.open ? '' : '<div class="note">The survey is now closed. Thank you to everyone who took part.</div>') +
-          '<p class="lead">31 short statements about the people you work with day to day. About eight minutes. This survey is separate from any leader ratings you gave, and is never linked to them.</p>' +
+          '<p class="lead soft">31 short statements about the people you work with day to day. About eight minutes. Your answers here are kept separate from any leader ratings you gave, and are never linked to them.</p>' +
         '</div>' +
         (deps.length ? '<div class="section"><h2>Which department are you in?</h2>' +
           '<p class="muted" style="max-width:66ch">Results are only shown for departments where at least ' + d.minGroup + ' people respond. Smaller departments are combined, so no one can be identified.</p>' +
@@ -870,11 +903,7 @@ var CONFIG = {
     ratebarSlot.innerHTML = '';
     app.innerHTML =
       '<div class="stack"><div class="section"><span class="eyebrow">Culture survey</span>' +
-        '<h1>You\'ve already taken part</h1><p class="lead">A response has already been sent from this device. Thank you.</p>' +
-        '<p class="muted">Someone else using this device? <button class="backlink" id="fresh">Start a new response</button></p></div></div>';
-    document.getElementById('fresh').addEventListener('click', function () {
-      store(cultureKey() + ':done', null); S.dept = null; S.answers = {}; cultureHome();
-    });
+        '<h1>You\'ve already taken part</h1><p class="lead">A response has already been sent from this device. Thank you.</p></div></div>';
     top();
   }
 
@@ -908,7 +937,7 @@ var CONFIG = {
           '</div><span class="gap num">' + (ls != null && v.score != null ? 'gap ' + Math.abs(v.score - ls).toFixed(1) : '') + '</span></div>';
       }).join('');
       compare = '<div class="section"><div class="section-head"><i class="mark"></i><h2>Culture and leadership</h2></div>' +
-        '<p class="muted" style="max-width:66ch">How the values are lived among colleagues (culture survey) next to how the leaders are rated (360 team average). The two measure the same behaviours from different angles, so read the gap as a direction, not an exact difference.</p>' +
+        '<p class="muted" style="max-width:66ch">How the values are lived among colleagues (culture survey) next to how the leaders are rated (360 team average). The two measure the same behaviours from different angles, so read the gap as a direction, not an exact difference.</p><p class="scalenote">' + SCALE_NOTE + GAP_NOTE + '</p>' +
         '<div class="legend"><span><i class="sw dotsw g-culture"></i>Culture, people around me</span><span><i class="sw dotsw g-leadership"></i>Leadership 360</span></div>' +
         '<div class="vbars">' + rows + axis() + '</div></div>';
     }
@@ -1003,8 +1032,11 @@ var CONFIG = {
     return '<div class="legend">' + scale.map(function (s, i) { return '<span><i class="sw c' + (i + 1) + '"></i>' + esc(s) + '</span>'; }).join('') + '</div>';
   }
   function axis() {
-    return '<div class="axis" aria-hidden="true"><span></span><div class="ticks num"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div><span></span></div>';
+    return '<div class="axis" aria-hidden="true"><span></span><div><div class="ticks num"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>' +
+      '<div class="ends"><span>Strongly disagree</span><span>Neutral</span><span>Strongly agree</span></div></div><span></span></div>';
   }
+  var SCALE_NOTE = 'Scores are averages on the survey scale: 1 is strongly disagree, 3 is neutral and 5 is strongly agree.';
+  var GAP_NOTE = ' The gap is the difference, in points, between the highest and lowest score on that row. The bigger the gap, the more differently the groups see it.';
   function groupByValue(qs) {
     var order = [], g = {};
     qs.forEach(function (q) { if (!g[q.value]) { g[q.value] = []; order.push(q.value); } g[q.value].push(q); });
@@ -1073,7 +1105,7 @@ var CONFIG = {
     }).join('') + '</div>' : '';
 
     app.innerHTML =
-      '<div class="stack">' +
+      '<div class="stack dash">' +
         '<div class="section"><span class="eyebrow">' + (adm ? 'Admin view of' : 'Your results') + '</span><h1>' + esc(d.name) + '</h1>' +
           (adm && d.counts && (d.counts.exco < d.minRaters || (d.counts.direct + d.counts.indirect > 0 && (d.counts.direct < d.minRaters || d.counts.indirect < d.minRaters)))
             ? '<div class="note">Admin view shows every group. ' + esc(fn) + ' will see less: groups under ' + d.minRaters + ' are combined or left out (peers ' + d.counts.exco + ', direct ' + d.counts.direct + ', through someone else ' + d.counts.indirect + ').</div>' : '') +
@@ -1118,7 +1150,7 @@ var CONFIG = {
         '</div><span class="gap num">' + (gap != null ? 'gap ' + gap.toFixed(1) : '') + '</span></div>';
     }).join('');
     return '<div class="section"><div class="section-head"><i class="mark"></i><h2>How each group sees ' + (adm ? esc(firstName(d.name)) : 'you') + '</h2></div>' +
-      '<p class="muted" style="max-width:66ch">Average score for each value, by who gave the rating. A wide gap means leadership lands differently with different groups.</p>' +
+      '<p class="muted" style="max-width:66ch">Average score for each value, by who gave the rating.</p><p class="scalenote">' + SCALE_NOTE + GAP_NOTE + '</p>' +
       '<div class="legend">' + gs.map(function (l) { return '<span><i class="sw dotsw g-' + l.key + '"></i>' + esc(GROUP_SHORT[l.key]) + '</span>'; }).join('') + '</div>' +
       '<div class="vbars">' + rows + axis() + '</div></div>';
   }
@@ -1140,7 +1172,7 @@ var CONFIG = {
     var ahead = '<div class="section"><span class="eyebrow">Admin view</span><h1>All results</h1>' +
       '<p class="muted" style="max-width:66ch">Only you can see this page. It shows every leader by name and works before results are released. Keep this link private.</p>';
     if (tab === 'culture') {
-      app.innerHTML = '<div class="stack">' + ahead + '<div class="row"><span class="chip num">Culture: ' + d.culture.total + ' responses</span></div></div>' + tabs +
+      app.innerHTML = '<div class="stack dash">' + ahead + '<div class="row"><span class="chip num">Culture: ' + d.culture.total + ' responses</span></div></div>' + tabs +
         cultureDash(d.culture, d.teamValues, true) + '</div>';
       bindTabs(function (t) { adminView(d, code, t); });
       return;
@@ -1200,7 +1232,7 @@ var CONFIG = {
     if (tab === 'culture') {
       var chead = '<div class="section"><span class="eyebrow">Team overview</span><h1>Culture across Symmetry</h1>' +
         '<p class="muted">How the four values are lived day to day, from the culture survey. Averages only, never individual answers.</p></div>';
-      app.innerHTML = '<div class="stack">' + chead + tabs +
+      app.innerHTML = '<div class="stack dash">' + chead + tabs +
         (d.released ? cultureDash(d.culture, d.values, false) : '<div class="note">Culture results will appear here once the survey closes and results are released.</div>' + cultureCountsNote(d.cultureCounts)) + '</div>';
       bindTabs(function (t) { mdView(d, t); });
       return;
@@ -1255,7 +1287,7 @@ var CONFIG = {
 
     var excluded = d.leadersTotal - d.leadersIncluded;
     app.innerHTML =
-      '<div class="stack">' + head + tabs +
+      '<div class="stack dash">' + head + tabs +
         '<div class="hero">' +
           '<div><div class="eyebrow">Team overall</div><div class="big num">' + fmt(d.overall) + '<small>/ 5</small></div>' +
             '<div class="muted" style="font-size:14px">' + d.leadersIncluded + ' leaders included' + (excluded ? ', ' + excluded + ' with too few ratings' : '') + '</div></div>' +
@@ -1290,8 +1322,8 @@ var CONFIG = {
         '</div><span class="gap num">' + (gap != null ? 'gap ' + gap.toFixed(1) : '') + '</span></div>';
     }).join('');
     var staff = lv.filter(function (l) { return l.key === 'staff'; })[0];
-    return '<div class="section"><div class="section-head"><i class="mark"></i><h2>How peers and staff see the team</h2></div>' +
-      '<p class="muted" style="max-width:66ch">Team averages for each value. Staff scores cover the ' + staff.leaders + ' leaders with enough staff responses to report.</p>' +
+    return '<div class="section"><div class="section-head"><i class="mark"></i><h2>How peers and staff see the EXCO team</h2></div>' +
+      '<p class="muted" style="max-width:66ch">Team averages for each value. Staff scores cover the ' + staff.leaders + ' leaders with enough staff ratings to report.</p><p class="scalenote">' + SCALE_NOTE + GAP_NOTE + '</p>' +
       '<div class="legend">' + lv.map(function (l) { return '<span><i class="sw dotsw g-' + l.key + '"></i>' + esc(GROUP_SHORT[l.key]) + '</span>'; }).join('') + '</div>' +
       '<div class="vbars">' + rows + axis() + '</div></div>';
   }
@@ -1315,17 +1347,20 @@ var CONFIG = {
     ratebarSlot.innerHTML = ''; who.textContent = '';
     document.getElementById('demobar').innerHTML = '';
     app.innerHTML =
-      '<div class="stack">' +
+      '<div class="stack dash">' +
         '<div class="section"><span class="demo-tag">Preview with sample data</span><h1>In Symmetry</h1>' +
-          '<p class="lead">A leadership values 360 for the Symmetry EXCO, and a culture survey for everyone. Each EXCO member is rated by their fellow EXCO members and by staff, then sees their own results privately. The MD and HR see the team and culture picture without names.</p>' +
-          '<p class="muted">The names and questions are final. All scores shown are made-up sample data.</p></div>' +
-        '<div class="views">' +
-          '<button class="view" data-v="survey"><span class="eyebrow">EXCO survey link</span><h3>The EXCO survey</h3><p>What an EXCO member sees when they open their link: their colleagues, progress, and the rating flow.</p></button>' +
-          '<button class="view" data-v="staff"><span class="eyebrow">Staff link</span><h3>The staff survey</h3><p>One link for all staff. They rate their own EXCO leader and one more, can rate others if they wish, then go on to the culture survey.</p></button>' +
-          '<button class="view" data-v="results"><span class="eyebrow">EXCO results link</span><h3>Personal results</h3><p>What each EXCO member sees privately, split by peers and staff, for an example leader.</p></button>' +
-          '<button class="view" data-v="culture"><span class="eyebrow">Culture link</span><h3>The culture survey</h3><p>31 statements about the people around you, with a department question. Can follow straight on from the 360.</p></button>' +
-          '<button class="view" data-v="md"><span class="eyebrow">MD and HR links</span><h3>Team overview</h3><p>Leadership and culture results: peers and staff compared, departments, strengths and gaps. No names against scores.</p></button>' +
-        '</div>' +
+          '<p class="lead soft">A leadership values 360 for the Symmetry EXCO, followed by a culture survey for staff. Each EXCO member is rated by their fellow EXCO members and by staff, then sees their own results privately. The MD and HR see the team and culture picture without names.</p>' +
+          '<p class="muted">The names and questions are final. Nothing you enter here is saved, and all scores shown are made-up sample data.</p></div>' +
+        '<div class="section hubhead"><h2>Survey links</h2>' +
+          '<div class="views">' +
+            '<button class="view" data-v="survey"><span class="eyebrow">EXCO survey link</span><h3>EXCO survey</h3><p>What an EXCO member sees on their private link: their colleagues, progress, and the rating flow.</p></button>' +
+            '<button class="view" data-v="staff"><span class="eyebrow">Staff survey link</span><h3>Staff survey</h3><p>One link for all staff: rate two EXCO members (more if they wish), then the culture survey.</p></button>' +
+          '</div></div>' +
+        '<div class="section hubhead"><h2>Dashboard samples</h2>' +
+          '<div class="views">' +
+            '<button class="view" data-v="results"><span class="eyebrow">EXCO results link</span><h3>Personal results</h3><p>What each EXCO member sees privately, by peers and staff, for an example leader.</p></button>' +
+            '<button class="view" data-v="md"><span class="eyebrow">MD and HR links</span><h3>Team overview</h3><p>Leadership and culture results for the team as a whole. No names against scores.</p></button>' +
+          '</div></div>' +
       '</div>';
     app.querySelectorAll('.view').forEach(function (b) {
       b.addEventListener('click', function () {
