@@ -108,6 +108,7 @@ main{padding-block:36px 64px}
 .journey .js.opt{border-style:dashed}
 .journey .sep{width:14px;height:1px;background:var(--line)}
 .hubhead{display:flex;flex-direction:column;gap:12px}
+.section.before{margin-top:28px}
 .note{background:var(--mist);border-left:3px solid var(--orange);padding:14px 16px;border-radius:var(--r);max-width:70ch}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:var(--pill);padding:12px 24px;font-weight:600;cursor:pointer;background:var(--btn);color:var(--btn-ink);text-decoration:none}
 .btn:hover{filter:brightness(1.12)}
@@ -442,7 +443,7 @@ var CONFIG = {
           '</div>' +
           '<div class="people">' + list + '</div>' +
         '</div>' +
-        '<div class="section">' +
+        '<div class="section before">' +
           '<h2>Before you start</h2>' +
           '<ul class="muted" style="margin:0;padding-left:18px;max-width:66ch;display:flex;flex-direction:column;gap:6px">' +
             '<li>Answer from what you have seen this person do, not what you think they intend.</li>' +
@@ -451,9 +452,6 @@ var CONFIG = {
             '<li>Once you submit for a colleague, those ratings are final.</li>' +
           '</ul>' +
         '</div>' +
-        (d.preview ? '<div class="section"><h2>See the results views</h2>' +
-          '<p class="muted" style="max-width:66ch">These show sample scores, not the ratings you gave here.</p>' +
-          '<div class="row"><button class="btn" data-go="results">Example personal results</button><button class="btn ghost" data-go="md">MD team view</button></div></div>' : '') +
       '</div>';
     app.querySelectorAll('[data-go]').forEach(function (b) {
       b.addEventListener('click', function () { openDemo(b.getAttribute('data-go')); });
@@ -563,7 +561,7 @@ var CONFIG = {
     var pips = '<div class="pips" aria-hidden="true"><i class="pip' + (stage >= 1 ? ' on' : '') + '"></i><i class="pip' + (stage >= 2 ? ' on' : '') + '"></i></div>';
     var heading = stage === 0 ? (d.preview ? 'Try the staff survey' : 'Rate your EXCO leaders') : (stage === 1 ? 'Now rate a second EXCO member' : 'Rate another EXCO member');
     var lead = stage === 0
-      ? 'You\'ll rate two EXCO members: first the one you report to, then one more you work with. Each takes about five minutes. Your answers are anonymous: we don\'t ask for your name or email, and leaders only see averages from groups of at least ' + (d.minRaters || 3) + ' people.'
+      ? 'Your answers are anonymous: we don\'t ask for your name or email, and leaders only see averages from groups of at least ' + (d.minRaters || 3) + ' people.'
       : (stage === 1 ? 'Everyone rates their own leader and one more EXCO member. Choose someone you work with, even if not every day: you can choose ' + esc(d.na) + ' for anything you haven\'t seen.'
         : 'This one is optional. Choose another EXCO member you work with.');
     var q1 = stage === 0 ? 'Which EXCO member do you report to?' : 'Which EXCO member would you like to rate?';
@@ -586,22 +584,20 @@ var CONFIG = {
         (L ? '<div class="section" id="relsec">' +
           '<h2>How do you work with ' + esc(first) + '?</h2>' +
           '<div class="rels' + (stage ? ' rels3' : '') + '">' + rels + '</div>' +
-          '<p class="muted" style="max-width:66ch">This lets ' + esc(first) + ' see how leadership lands with different groups. No group\'s results are ever shown unless at least ' + (d.minRaters || 3) + ' people are in it, so no one can be identified.</p>' +
+          '<p class="muted" style="max-width:66ch">No group\'s results are ever shown unless at least ' + (d.minRaters || 3) + ' people are in it, so no one can be identified.</p>' +
         '</div>' : '') +
         '<div class="row"><button class="btn" id="startq"' + (L && sel.group && d.open ? '' : ' disabled') + '>' + (Object.keys(S.answers).length ? 'Continue the questions' : 'Start the questions') + '</button>' +
           '<span class="muted" style="font-size:14px">' + (!L ? 'Choose an EXCO member first.' : (!sel.group ? 'Then choose how you work with ' + esc(first) + '.' : '31 questions across the four values.')) + '</span>' +
           (stage >= 2 ? '<button class="backlink" id="tochoice">Back</button>' : '') + '</div>' +
-        (stage === 0 ? '<div class="section">' +
+        (stage === 0 ? '<div class="section before">' +
           '<h2>Before you start</h2>' +
           '<ul class="muted" style="margin:0;padding-left:18px;max-width:66ch;display:flex;flex-direction:column;gap:6px">' +
             '<li>Answer from what you have seen each leader do, not what you think they intend.</li>' +
-            '<li>If you haven\'t seen a behaviour, choose <b>' + esc(d.na) + '</b>. It is left out of the averages.</li>' +
+            '<li>On your second rating, if you haven\'t seen a behaviour, you can choose <b>' + esc(d.na) + '</b>. It is left out of the averages.</li>' +
             '<li>Your answers save on this device as you go, so you can stop and come back.</li>' +
             '<li>Each rating is final once you submit it.</li>' +
           '</ul>' +
         '</div>' : '') +
-        (d.preview && stage === 0 ? '<div class="section"><h2>See the results views</h2><p class="muted" style="max-width:66ch">These show sample scores, not the ratings you gave here.</p>' +
-          '<div class="row"><button class="btn" data-go="results">Example personal results</button><button class="btn ghost" data-go="md">MD and HR view</button></div></div>' : '') +
       '</div>';
     app.querySelectorAll('[data-go]').forEach(function (b) { b.addEventListener('click', function () { openDemo(b.getAttribute('data-go')); }); });
     app.querySelectorAll('.person.pick:not([disabled])').forEach(function (b) {
@@ -629,6 +625,7 @@ var CONFIG = {
     if (tc) tc.addEventListener('click', function () { S.sel = {}; S.answers = {}; saveStaff(); staffChoice(); });
     document.getElementById('startq').addEventListener('click', function () {
       var l = staffLeader(S.sel.leader);
+      if (!S.rated.length) Object.keys(S.answers).forEach(function (k) { if (S.answers[k] === 'NA') delete S.answers[k]; });
       S.cur = { c: { id: l.id, name: l.name }, group: S.sel.group, key: staffKey(), answers: S.answers, step: 0, confirm: false, preview: S.data.preview };
       renderStep();
     });
@@ -716,17 +713,19 @@ var CONFIG = {
     if (S.cur.confirm) return renderConfirm();
     var v = S.data.values[S.cur.step], scale = S.data.scale, last = S.cur.step === S.data.values.length - 1;
     var staff = S.mode === 'staff', fn = firstName(S.cur.c.name);
+    // Not able to say is offered from the second EXCO rating onwards, not for your own leader.
+    var na = staff && (S.rated || []).length >= 1;
     var qs = v.questions.map(function (q, i) {
       var missing = highlight && !S.cur.answers[q.id];
       var opts = scale.map(function (lab, k) {
         var val = k + 1, id = 'q_' + q.id + '_' + val;
         return '<label for="' + id + '"><input type="radio" id="' + id + '" name="q_' + q.id + '" value="' + val + '"' + (S.cur.answers[q.id] === val ? ' checked' : '') + '><span>' + esc(lab) + '</span></label>';
       }).join('');
-      if (staff) {
+      if (na) {
         var nid = 'q_' + q.id + '_na';
         opts += '<label class="na" for="' + nid + '"><input type="radio" id="' + nid + '" name="q_' + q.id + '" value="NA"' + (S.cur.answers[q.id] === 'NA' ? ' checked' : '') + '><span>' + esc(S.data.na) + '</span></label>';
       }
-      return '<fieldset class="q' + (missing ? ' missing' : '') + '" id="f_' + q.id + '"><legend><span class="n num">' + (i + 1) + '</span><span>' + esc(fill(q.text, S.cur.c.name)) + '</span></legend><div class="scale' + (staff ? ' with-na' : '') + '">' + opts + '</div></fieldset>';
+      return '<fieldset class="q' + (missing ? ' missing' : '') + '" id="f_' + q.id + '"><legend><span class="n num">' + (i + 1) + '</span><span>' + esc(fill(q.text, S.cur.c.name)) + '</span></legend><div class="scale' + (na ? ' with-na' : '') + '">' + opts + '</div></fieldset>';
     }).join('');
     app.innerHTML =
       '<div class="stack">' + journey() +
@@ -734,7 +733,7 @@ var CONFIG = {
           '<span class="eyebrow">Value ' + (S.cur.step + 1) + ' of ' + S.data.values.length + '</span>' +
           '<h1>' + esc(v.name) + '</h1>' +
           (S.mode === 'culture' ? '<p class="muted">How much do you agree with each statement about the people you work with day to day?</p>' :
-          '<p class="muted">How much do you agree with each statement about ' + esc(fn) + '?' + (staff ? ' If you haven\'t seen it, choose ' + esc(S.data.na) + '.' : '') + '</p>') +
+          '<p class="muted">How much do you agree with each statement about ' + esc(fn) + '?' + (na ? ' If you haven\'t seen it, choose ' + esc(S.data.na) + '.' : '') + '</p>') +
           (staff ? '<p class="frame">When we say ' + esc(fn) + '\'s team, we mean everyone in ' + esc(fn) + '\'s area, not only the people who report to them directly.</p>' : '') +
           (highlight ? '<div class="note">Please answer the highlighted questions to continue.</div>' : '') +
         '</div>' +
@@ -866,7 +865,7 @@ var CONFIG = {
         (d.role === 'EXCO' ? '<div class="note">You are taking part as a member of EXCO. Your answers are grouped with other EXCO members, shown only if at least ' + d.minGroup + ' take part.</div>' : '') +
         '<div class="row"><button class="btn" id="startc"' + (ready && d.open ? '' : ' disabled') + '>' + (Object.keys(S.answers).length ? 'Continue the questions' : 'Start the questions') + '</button>' +
           (ready ? '' : '<span class="muted" style="font-size:14px">Choose your department first.</span>') + '</div>' +
-        '<div class="section"><h2>Before you start</h2>' +
+        '<div class="section before"><h2>Before you start</h2>' +
           '<ul class="muted" style="margin:0;padding-left:18px;max-width:66ch;display:flex;flex-direction:column;gap:6px">' +
             '<li>Think about the people you work with most, not one person.</li>' +
             '<li>Answer from what you see happen, not what should happen.</li>' +
