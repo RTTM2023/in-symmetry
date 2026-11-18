@@ -485,7 +485,7 @@ var CONFIG = {
 
   // The staff journey: EXCO member 1, EXCO member 2, optional extras, culture survey.
   function journey() {
-    var staffMode = S && S.mode === 'staff', cult = S && S.mode === 'culture' && S.data && S.data.role === 'Staff';
+    var staffMode = S && S.mode === 'staff' && !S.extra, cult = S && S.mode === 'culture' && S.data && S.data.role === 'Staff';
     if (!staffMode && !cult) return '';
     var n = cult ? 2 : (S.rated || []).length, rating = !!S.cur && staffMode;
     var extras = Math.max(0, n - 2);
@@ -519,6 +519,10 @@ var CONFIG = {
       S.rated = (draft && draft.rated) || [];
       S.sel = { leader: draft && draft.leader, group: draft && draft.group };
       S.answers = (draft && draft.answers) || {};
+      // Extra-rating link (?g=CODE&extra): straight to "Rate another EXCO member",
+      // even after finishing. Leaders already rated on this device stay greyed out.
+      S.extra = params.has('extra');
+      if (S.extra) { S.sel = {}; S.answers = {}; return staffHome(); }
       if (!d.preview && store(staffKey() + ':done')) return staffDone();
       if (S.rated.length >= 2 && !S.sel.leader) return staffChoice();
       staffHome();
@@ -545,7 +549,7 @@ var CONFIG = {
     S.cur = null;
     S.picking = (S.rated || []).length >= 2;
     var d = S.data, sel = S.sel, L = sel.leader ? staffLeader(sel.leader) : null, first = L ? firstName(L.name) : '';
-    var stage = S.rated.length, done = ratedIds();
+    var stage = S.extra ? Math.max(2, S.rated.length) : S.rated.length, done = ratedIds();
     var people = d.leaders.map(function (l) {
       var meta = [l.title, l.area].filter(Boolean).join(' · '), isDone = !!done[l.id];
       return '<button class="person pick" data-id="' + esc(l.id) + '" aria-pressed="' + (sel.leader === l.id) + '"' + (d.open && !isDone ? '' : ' disabled') + '>' +
@@ -589,7 +593,7 @@ var CONFIG = {
         '</div>' : '') +
         '<div class="row"><button class="btn" id="startq"' + (L && sel.group && d.open ? '' : ' disabled') + '>' + (Object.keys(S.answers).length ? 'Continue the questions' : 'Start the questions') + '</button>' +
           '<span class="muted" style="font-size:14px">' + (!L ? 'Choose an EXCO member first.' : (!sel.group ? 'Then choose how you work with ' + esc(first) + '.' : '31 questions across the four values.')) + '</span>' +
-          (stage >= 2 ? '<button class="backlink" id="tochoice">Back</button>' : '') + '</div>' +
+          (stage >= 2 && !S.extra ? '<button class="backlink" id="tochoice">Back</button>' : '') + '</div>' +
         (stage === 0 ? '<div class="section before">' +
           '<h2>Before you start</h2>' +
           '<ul class="muted" style="margin:0;padding-left:18px;max-width:66ch;display:flex;flex-direction:column;gap:6px">' +
@@ -638,14 +642,14 @@ var CONFIG = {
     ratebarSlot.innerHTML = '';
     S.cur = null;
     S.picking = false;
-    var d = S.data, names = S.rated.map(function (r) { return r.name; });
+    var d = S.data, names = (S.extra ? S.rated.slice(-1) : S.rated).map(function (r) { return r.name; });
     var left = d.leaders.filter(function (l) { return !ratedIds()[l.id]; }).length;
     var list = names.length > 1 ? names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1] : names[0];
     app.innerHTML =
       '<div class="stack">' + journey() +
         '<div class="section"><span class="eyebrow">' + esc(d.subtitle || 'Leadership Values 360') + '</span>' +
           '<h1>Thank you</h1><p class="lead">Your ratings for ' + esc(list) + ' are in.</p></div>' +
-        (d.cultureCode
+        (d.cultureCode && !S.extra
           ? '<div class="confirm"><h2>Next: the culture survey</h2>' +
               '<p class="soft">31 short statements about the people you work with day to day. About eight minutes, and kept completely separate from the ratings you just gave.</p>' +
               '<div class="row"><button class="btn" id="tocult">Continue to the culture survey</button></div></div>'
@@ -715,7 +719,7 @@ var CONFIG = {
     var v = S.data.values[S.cur.step], scale = S.data.scale, last = S.cur.step === S.data.values.length - 1;
     var staff = S.mode === 'staff', fn = firstName(S.cur.c.name);
     // Not able to say is offered from the second EXCO rating onwards, not for your own leader.
-    var na = staff && (S.rated || []).length >= 1;
+    var na = staff && (S.extra || (S.rated || []).length >= 1);
     var qs = v.questions.map(function (q, i) {
       var missing = highlight && !S.cur.answers[q.id];
       var opts = scale.map(function (lab, k) {
@@ -809,7 +813,7 @@ var CONFIG = {
           S.rated.push({ id: S.cur.c.id, name: name, group: S.cur.group });
           S.sel = {}; S.answers = {};
           saveStaff();
-          if (S.rated.length < 2) return staffHome('Thank you. Your ratings for ' + name + ' are in.');
+          if (S.rated.length < 2 && !S.extra) return staffHome('Thank you. Your ratings for ' + name + ' are in.');
           return staffChoice();
         }
         S.cur.c.done = true;
