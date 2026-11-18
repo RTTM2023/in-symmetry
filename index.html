@@ -397,7 +397,8 @@ var CONFIG = {
   /* ================================================================== */
   /* SURVEY                                                             */
   /* ================================================================== */
-  var S = null; // survey state
+  // Keep any state already set: a cached survey can start before this line runs.
+  var S = S || null; // survey state
 
   function loadSurvey(code) {
     loading();
